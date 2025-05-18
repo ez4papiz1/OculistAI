@@ -46,3 +46,33 @@ def summarize(text: str) -> str:
         ]
     )
     return response.choices[0].message.content.strip()
+
+def summarize(text: str, appointment_type: str) -> str:
+    prompt_map = {
+        "routine": (
+            "Summarize the following eye doctor appointment about a routine eye checkup. Use the following bullet points: "
+            "Purpose of visit, vision complaints, medical history, visual acuity, pupil dilation results, diagnosis, follow-up plan."
+            "Always use numbers instead of words for numbers (eg. -1 instead of minus one)"
+        ),
+        "contacts": (
+            "Summarize the following eye doctor appointment about contact lens fitting. Use the following bullet points: "
+            "Purpose of visit, lens type, comfort level, visual acuity, fitting issues, care instructions, follow-up needs."
+            "Always use numbers instead of words for numbers (eg. -1 instead of minus one)"
+        ),
+        "postsurgery": (
+            "Summarize the following eye doctor about a post-operative check-up. Use the following bullet points: "
+            "Purpose of visit, type of surgery, recovery progress, current symptoms, visual acuity, complications, next steps."
+            "Always use numbers instead of words for numbers (eg. -1 instead of minus one)"
+        )
+    }
+
+    prompt = prompt_map.get(appointment_type, prompt_map["routine"])
+
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": text}
+        ]
+    )
+    return response.choices[0].message.content.strip()

@@ -12,6 +12,11 @@ class AppointmentStatusEnum(str, enum.Enum):
     scheduled = "scheduled"
     completed = "completed"
     canceled = "canceled"
+    
+class AppointmentTypeEnum(str, enum.Enum):
+    routine = "routine"
+    contacts = "contacts"
+    postsurgery = "postsurgery"
 
 class Doctor(Base):
     __tablename__ = "doctors"
@@ -39,6 +44,7 @@ class Appointment(Base):
     appointment_time = Column(DateTime, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     notes = Column(Text)
+    type = Column(Enum(AppointmentTypeEnum), default="routine")
     status = Column(Enum(AppointmentStatusEnum), default="scheduled")
 
     patient = relationship("Patient")

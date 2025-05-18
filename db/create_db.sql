@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     appointment_time DATETIME NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     notes TEXT,
+    type ENUM('routine', 'contacts', 'postsurgery') DEFAULT 'routine',
     status ENUM('scheduled', 'completed', 'canceled') DEFAULT 'scheduled',
     FOREIGN KEY (patient_id) REFERENCES patients(id),
     FOREIGN KEY (doctor_id) REFERENCES doctors(id)
@@ -46,4 +47,4 @@ INSERT INTO patients (firstname, lastname, birth_date, notes)
 VALUES ('St', 'Vankoff', '1990-06-15', 'First-time visit');
 
 INSERT INTO appointments (patient_id, doctor_id, appointment_time)
-VALUES (1, 1, '2025-05-17 15:00:00');
+VALUES (1, 1, '2025-01-01 08:00:00');

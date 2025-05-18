@@ -1,0 +1,38 @@
+.container {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.box {
+  flex: 1;
+}
+
+.scroll{
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  padding: 1rem;
+  border-radius: 6px;
+  white-space: pre-line;
+}
+
+.summary-point {
+  margin-bottom: 0.5rem;
+}
+
+.dropdown-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dropdown {
+  display: flex;
+  align-items: center;
+}
+
+.back {
+  margin-right: auto;
+}
