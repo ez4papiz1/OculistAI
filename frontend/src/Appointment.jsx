@@ -10,6 +10,9 @@ export default function Appointment() {
     const [type, setType] = useState("routine");
     const [status, setStatus] = useState("scheduled");
     const [audioURL, setAudioURL] = useState("");
+    const [doctorName, setDoctorName] = useState("");
+    const [patientName, setPatientName] = useState("");
+    const [notes, setNotes] = useState("");
     const mediaRecorder = useRef(null);
     const audioChunks = useRef([]);
     const streamRef = useRef(null);
@@ -24,6 +27,9 @@ export default function Appointment() {
             const appointment = data.find((a) => String(a.id) === String(id));
             setStatus(appointment.status);
             setType(appointment.type);
+            setDoctorName(appointment.doctor_name);
+            setPatientName(appointment.patient_name);
+            setNotes(appointment.notes || "");
         };
 
         const fetchTranscription = async () => {
@@ -32,12 +38,32 @@ export default function Appointment() {
                 const data = await res.json();
                 setTranscript(data.transcript);
                 setSummary(data.summary);
+                const url = `http://localhost:8000/${data.audio_path}`;
+                setAudioURL(url);
             }
         };
 
         fetchAppointment();
         fetchTranscription();
     }, [id]);
+
+    useEffect(() => {
+        const delay = setTimeout(() => {
+            if (notes !== "") {
+            const formData = new FormData();
+            formData.append("appointment_id", id);
+            formData.append("notes", notes);
+
+            fetch("http://localhost:8000/update-notes", {
+                method: "POST",
+                body: formData,
+            });
+            }
+        }, 1000);
+
+        return () => clearTimeout(delay);
+    }, [notes]);
+
 
     const startRecording = async () => {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -87,7 +113,9 @@ export default function Appointment() {
         <div className="dropdown-row">
             <button className="back" onClick={() => navigate("/")}>Back to Home</button>
             <div className="dropdown">
-                <label>Status:&nbsp;</label>
+                <strong>Doctor:&nbsp;</strong> {doctorName}&nbsp;&nbsp;&nbsp;
+                <strong>Patient:&nbsp;</strong> {patientName}&nbsp;&nbsp;&nbsp;
+                <strong>Status:&nbsp;</strong>
                 <select
                 value={status}
                 onChange={async (e) => {
@@ -107,13 +135,23 @@ export default function Appointment() {
                 <option value="scheduled">Scheduled</option>
                 <option value="completed">Completed</option>
                 <option value="canceled">Canceled</option>
-                </select>
-            </div>
-            <div className="dropdown">
-                Appointment Type:&nbsp;
+                </select>&nbsp;&nbsp;&nbsp;
+                <strong>Appointment Type:&nbsp;</strong>
                 <select
                 value={type}
-                onChange={(e) => setType(e.target.value)}
+                onChange={async (e) => {
+                    const newType = e.target.value;
+                    setType(newType);
+
+                    const formData = new FormData();
+                    formData.append("appointment_id", id);
+                    formData.append("appointment_type", newType);
+
+                    await fetch("http://localhost:8000/update-type", {
+                    method: "POST",
+                    body: formData,
+                    });
+                }}
                 >
                 <option value="routine">Routine Eye Exam</option>
                 <option value="contacts">Contact Lens Fitting</option>
@@ -147,12 +185,21 @@ export default function Appointment() {
 
         {audioURL && (
             <div>
-            <audio controls src={audioURL}></audio>
+            <audio controls preload="auto" src={audioURL}></audio>
             </div>
         )}
          <button onClick={recording ? stopRecording : startRecording}>
             {recording ? "Stop Recording" : "Start Recording"}
         </button>
+        <div style={{ marginTop: "2rem" }}>
+            <label><strong>Notes:</strong></label>
+            <br />
+            <textarea
+                style={{ width: "100%", height: "100px" }}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+            />
         </div>
+    </div>
     );
 }
