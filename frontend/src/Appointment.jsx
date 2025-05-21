@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import "../styles/Appointment.css";
 
 export default function Appointment() {
     const { id } = useParams();
@@ -108,24 +107,32 @@ export default function Appointment() {
     };
 
     return (
-    <div style={{ padding: "2rem" }}>
-        <h1>Oculist AI - Appointment #{id}</h1>
-        <div className="dropdown-row">
-            <button className="back" onClick={() => navigate("/")}>Back to Home</button>
-            <div className="dropdown">
-                <strong>Doctor:&nbsp;</strong> {doctorName}&nbsp;&nbsp;&nbsp;
-                <strong>Patient:&nbsp;</strong> {patientName}&nbsp;&nbsp;&nbsp;
-                <strong>Status:&nbsp;</strong>
+    <div className="container-fluid" style={{ padding: "50px" }}>
+        <div className="d-flex justify-content-between align-items-start mb-3">
+            <button className="btn btn-outline-secondary" onClick={() => navigate("/")}>
+            ← Back to Home
+            </button>
+
+            <div className="d-flex flex-wrap justify-content-end align-items-center gap-3">
+            <div className="d-flex align-items-center gap-1">
+                <strong>Doctor:</strong>
+                <span>{doctorName}</span>
+            </div>
+            <div className="d-flex align-items-center gap-1">
+                <strong>Patient:</strong>
+                <span>{patientName}</span>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+                <label className="fw-bold mb-0">Status:</label>
                 <select
+                className="form-select form-select-sm w-auto"
                 value={status}
                 onChange={async (e) => {
                     const newStatus = e.target.value;
                     setStatus(newStatus);
-
                     const formData = new FormData();
                     formData.append("appointment_id", id);
                     formData.append("status", newStatus);
-
                     await fetch("http://localhost:8000/update-status", {
                     method: "POST",
                     body: formData,
@@ -135,18 +142,19 @@ export default function Appointment() {
                 <option value="scheduled">Scheduled</option>
                 <option value="completed">Completed</option>
                 <option value="canceled">Canceled</option>
-                </select>&nbsp;&nbsp;&nbsp;
-                <strong>Appointment Type:&nbsp;</strong>
+                </select>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+                <label className="fw-bold mb-0">Type:</label>
                 <select
+                className="form-select form-select-sm w-auto"
                 value={type}
                 onChange={async (e) => {
                     const newType = e.target.value;
                     setType(newType);
-
                     const formData = new FormData();
                     formData.append("appointment_id", id);
                     formData.append("appointment_type", newType);
-
                     await fetch("http://localhost:8000/update-type", {
                     method: "POST",
                     body: formData,
@@ -158,48 +166,62 @@ export default function Appointment() {
                 <option value="postsurgery">Post-Operative Check</option>
                 </select>
             </div>
+            </div>
+        </div>
+
+        <h1 className="mb-4">Oculist AI - Appointment #{id}</h1>
+
+        <div className="mb-4">
+            <button
+            className={`btn ${recording ? "btn-danger" : "btn-success"}`}
+            onClick={recording ? stopRecording : startRecording}
+            >
+            {recording ? "Stop Recording" : "Start Recording"}
+            </button>
         </div>
 
         {summary && (
-            <div className="container">
-                <div className="box">
-                <h3>Transcript</h3>
-                <div className="scroll">{transcript}</div>
-                </div>
-
-                <div className="box">
-                    <h3>Summary</h3>
-                    <div className="scroll">
-                        {summary
-                        .split("\n")
-                        .filter((line) => line.trim().startsWith("-"))
-                        .map((point, index) => (
-                            <div key={index} className="summary-point">
-                                {point}
-                            </div>
-                        ))}
-                    </div>
-                </div>
+        <div className="row mb-4">
+            <div className="col-md-6">
+            <h3>Transcript</h3>
+            <div className="border p-3 overflow-auto" style={{ maxHeight: "500px" }}>
+                {transcript
+                .split(/(?=\[\d{2}:\d{2}(?::\d{2})?\])/g)
+                .map((segment, index) => (
+                    <div key={index}>{segment.trim()}</div>
+                ))}
             </div>
+            </div>
+            <div className="col-md-6">
+            <h3>Summary</h3>
+            <div className="border p-3 overflow-auto" style={{ maxHeight: "500px" }}>
+                {summary
+                .split("\n")
+                .filter((line) => line.trim().startsWith("-"))
+                .map((point, index) => (
+                    <div key={index}>• {point.replace(/^-/, "").trim()}</div>
+                ))}
+            </div>
+            </div>
+        </div>
         )}
 
         {audioURL && (
-            <div>
-            <audio controls preload="auto" src={audioURL}></audio>
-            </div>
+        <div className="mb-4">
+            <audio className="w-25" controls preload="auto" src={audioURL}></audio>
+        </div>
         )}
-         <button onClick={recording ? stopRecording : startRecording}>
-            {recording ? "Stop Recording" : "Start Recording"}
-        </button>
-        <div style={{ marginTop: "2rem" }}>
-            <label><strong>Notes:</strong></label>
-            <br />
-            <textarea
-                style={{ width: "100%", height: "100px" }}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-            />
+
+        <div className="mb-5 w-25">
+        <label className="form-label fw-bold">Notes:</label>
+        <textarea
+            className="form-control"
+            rows="4"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+        />
         </div>
     </div>
     );
+
 }
