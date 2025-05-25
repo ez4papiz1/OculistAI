@@ -170,3 +170,20 @@ async def update_type(
     db.commit()
     return {"message": "Appointment type updated"}
 
+@app.post("/doctors")
+def create_doctor(
+    firstname: str = Form(...),
+    lastname: str = Form(...),
+    email: str = Form(""),
+    db: Session = Depends(database.get_db)
+):
+    new_doctor = models.Doctor(
+        firstname=firstname,
+        lastname=lastname,
+        email=email
+    )
+    db.add(new_doctor)
+    db.commit()
+    db.refresh(new_doctor)
+    return {"id": new_doctor.id, "message": "Doctor created successfully"}
+

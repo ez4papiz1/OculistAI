@@ -5,6 +5,7 @@ export default function Home() {
 const [appointments, setAppointments] = useState([]);
 const [showAppModal, setShowAppModal] = useState(false);
 const [showPatientModal, setShowPatientModal] = useState(false);
+const [showDoctorModal, setShowDoctorModal] = useState(false);
 const [doctors, setDoctors] = useState([]);
 const [patients, setPatients] = useState([]);
 const [form, setForm] = useState({
@@ -20,6 +21,12 @@ lastname: "",
 birth_date: "",
 notes: ""
 });
+const [newDoctor, setNewDoctor] = useState({
+    firstname: "",
+    lastname: "",
+    email: ""
+});
+const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
 const navigate = useNavigate();
 
@@ -44,6 +51,33 @@ useEffect(() => {
     fetchDoctors();
     fetchPatients();
 }, []);
+
+const sortedAppointments = React.useMemo(() => {
+    let sortable = [...appointments];
+    if (sortConfig.key) {
+        sortable.sort((a, b) => {
+            let aVal = a[sortConfig.key];
+            let bVal = b[sortConfig.key];
+            if (sortConfig.key === 'appointment_time') {
+                aVal = new Date(aVal);
+                bVal = new Date(bVal);
+            }
+            if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+    return sortable;
+}, [appointments, sortConfig]);
+
+const handleSort = (key) => {
+    setSortConfig((prev) => {
+        if (prev.key === key) {
+            return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+        }
+        return { key, direction: 'desc' };
+    });
+};
 
 const handleAppSubmit = async (e) => {
 e.preventDefault();
@@ -127,23 +161,46 @@ return (
                 Add Patient
             </button>
             </div>
+            <div className="col-12 col-sm-6 col-md-3 col-lg-2" style={{ width: "10%" }}>
+            <button className="btn btn-info w-100" onClick={() => setShowDoctorModal(true)}>
+                Add Doctor
+            </button>
+            </div>
         </div>
 
         <div className="w-100">
             <table className="table table-bordered table-striped w-100">
             <thead>
                 <tr>
-                <th>Appointment #</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Type</th>
-                <th>Doctor</th>
-                <th>Patient</th>
+                <th>
+                    Appointment #
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('id')}>⇅</button>
+                </th>
+                <th>
+                    Date
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('appointment_time')}>⇅</button>
+                </th>
+                <th>
+                    Status
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('status')}>⇅</button>
+                </th>
+                <th>
+                    Type
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('type')}>⇅</button>
+                </th>
+                <th>
+                    Doctor
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('doctor_name')}>⇅</button>
+                </th>
+                <th>
+                    Patient
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('patient_name')}>⇅</button>
+                </th>
                 <th>Action</th>
                 </tr>
             </thead>
             <tbody>
-                {appointments.map((appt) => (
+                {sortedAppointments.map((appt) => (
                 <tr key={appt.id}>
                     <td>{appt.id}</td>
                     <td>{new Date(appt.appointment_time).toLocaleString([], {
@@ -261,6 +318,62 @@ return (
                 <div className="d-flex justify-content-end gap-2 mt-3">
                     <button className="btn btn-success" type="submit">Create</button>
                     <button className="btn btn-secondary" type="button" onClick={() => setShowPatientModal(false)}>Cancel</button>
+                </div>
+                </form>
+            </div>
+            </div>
+        </div>
+        )}
+
+        {showDoctorModal && (
+        <div className="modal d-block" tabIndex="-1" role="dialog">
+            <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content p-4">
+                <h2 className="mb-3">Add Doctor</h2>
+                <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!newDoctor.firstname || !newDoctor.lastname || !newDoctor.email) {
+                        alert("Fill out all required fields.");
+                        return;
+                    }
+                    const formData = new FormData();
+                    formData.append("firstname", newDoctor.firstname);
+                    formData.append("lastname", newDoctor.lastname);
+                    formData.append("email", newDoctor.email);
+                    const res = await fetch("http://localhost:8000/doctors", {
+                        method: "POST",
+                        body: formData
+                    });
+                    if (res.ok) {
+                        setShowDoctorModal(false);
+                        setNewDoctor({ firstname: "", lastname: "", email: "" });
+                        const updated = await fetch("http://localhost:8000/doctors");
+                        setDoctors(await updated.json());
+                    } else {
+                        alert("Failed to create doctor.");
+                    }
+                }}>
+                <div className="mb-3">
+                    <label className="form-label">First Name</label>
+                    <input className="form-control" required type="text"
+                        value={newDoctor.firstname}
+                        onChange={(e) => setNewDoctor({ ...newDoctor, firstname: e.target.value })} />
+                </div>
+                <div className="mb-3">
+                    <label className="form-label">Last Name</label>
+                    <input className="form-control" required type="text"
+                        value={newDoctor.lastname}
+                        onChange={(e) => setNewDoctor({ ...newDoctor, lastname: e.target.value })} />
+                </div>
+                <div className="mb-3">
+                    <label className="form-label">Email</label>
+                    <input className="form-control" required type="email"
+                        value={newDoctor.email}
+                        onChange={(e) => setNewDoctor({ ...newDoctor, email: e.target.value })} />
+                </div>
+                <div className="d-flex justify-content-end gap-2 mt-3">
+                    <button className="btn btn-success" type="submit">Create</button>
+                    <button className="btn btn-secondary" type="button" onClick={() => setShowDoctorModal(false)}>Cancel</button>
                 </div>
                 </form>
             </div>
