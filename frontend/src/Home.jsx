@@ -243,7 +243,7 @@ return (
                     minute: '2-digit'
                     })}</td>
                     <td>{{ scheduled: "Scheduled", completed: "Completed", canceled: "Canceled" }[appt.status]}</td>
-                    <td>{{ routine: "Routine Eye Exam", contacts: "Contact Lens Fitting", postsurgery: "Post-Operative Check" }[appt.type]}</td>
+                    <td>{{ routine: "Routine Eye Exam", contacts: "Contact Lens Fitting", postsurgery: "Post-Operative Check", special: "Special" }[appt.type]}</td>
                     <td>{appt.doctor_name}</td>
                     <td>{appt.patient_name}</td>
                     <td>
@@ -290,6 +290,7 @@ return (
                     <option value="routine">Routine Eye Exam</option>
                     <option value="contacts">Contact Lens Fitting</option>
                     <option value="postsurgery">Post-Operative Check</option>
+                    <option value="special">Special</option>
                     </select>
                 </div>
 

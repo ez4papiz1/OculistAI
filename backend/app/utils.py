@@ -2,6 +2,7 @@ import openai
 import os
 import re
 import bcrypt
+import json
 
 
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -38,7 +39,10 @@ def transcribe(audio_path: str) -> str:
 
     return text.strip()
 
-def summarize(text: str, appointment_type: str) -> str:
+def summarize(text: str, appointment_type: str, bullets: str) -> str:
+    bullet_list = json.loads(bullets)
+    bullet_str = ", ".join(bullet_list)
+    
     prompt_map = {
         "routine": (
             "Summarize the following eye doctor appointment about a routine eye checkup. Use the following bullet points: "
@@ -54,9 +58,13 @@ def summarize(text: str, appointment_type: str) -> str:
             "Summarize the following eye doctor about a post-operative check-up. Use the following bullet points: "
             "Purpose of visit, type of surgery, recovery progress, current symptoms, visual acuity, complications, next steps."
             "Always use numbers instead of words for numbers (eg. -1 instead of minus one)"
+        ),
+        "special": (
+            f"Summarize the following eye doctor appointment. Use the following bullet points: {bullet_str}. "
+            "Always use numbers instead of words for numbers (eg. -1 instead of minus one)"
         )
     }
-
+    
     prompt = prompt_map.get(appointment_type, prompt_map["routine"])
 
     response = client.chat.completions.create(

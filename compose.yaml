@@ -45,7 +45,7 @@ services:
       interval: 10s
       retries: 3
 
-  seed_doctor:
+  add_doctor:
     image: curlimages/curl:latest
     depends_on:
       backend:

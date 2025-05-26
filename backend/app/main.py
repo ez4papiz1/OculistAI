@@ -24,7 +24,8 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 async def upload_audio(
     appointment_id: int = Form(...),
     file: UploadFile = File(...),
-    appointment_type: str = Form(default="routine"),
+    appointment_type: str = Form(...),
+    bullets: str = Form(None),
     db: Session = Depends(database.get_db)
 ):
     old = db.query(models.Transcription).filter_by(appointment_id=appointment_id).all()
@@ -35,11 +36,12 @@ async def upload_audio(
     db.commit()
     
     path = f"uploads/{appointment_id}.webm"
+    file_bytes = await file.read()
     with open(path, "wb") as f:
-        f.write(await file.read())
+        f.write(file_bytes)
 
     transcript = utils.transcribe(path)
-    summary = utils.summarize(transcript, appointment_type)
+    summary = utils.summarize(transcript, appointment_type, bullets)
 
     transcription = crud.save_transcription(
         db, appointment_id, path, transcript, summary

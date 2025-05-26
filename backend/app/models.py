@@ -17,6 +17,7 @@ class AppointmentTypeEnum(str, enum.Enum):
     routine = "routine"
     contacts = "contacts"
     postsurgery = "postsurgery"
+    special = "special"
 
 class Doctor(Base):
     __tablename__ = "doctors"
