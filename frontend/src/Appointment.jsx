@@ -1,8 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 
 export default function Appointment() {
     const { id } = useParams();
+    const location = useLocation();
+    const navigate = useNavigate();
+    const doctor = location.state?.doctor || null;
+    const [checkedAuth, setCheckedAuth] = useState(false);
     const [recording, setRecording] = useState(false);
     const [summary, setSummary] = useState("");
     const [transcript, setTranscript] = useState("");
@@ -15,8 +19,16 @@ export default function Appointment() {
     const mediaRecorder = useRef(null);
     const audioChunks = useRef([]);
     const streamRef = useRef(null);
-    const navigate = useNavigate();
 
+
+    useEffect(() => {
+        if (!doctor) {
+            alert("Please login");
+            navigate("/login", { replace: true });
+        } else {
+            setCheckedAuth(true);
+        }
+    }, [doctor, navigate]);
 
     useEffect(() => {
         const fetchAppointment = async () => {
@@ -106,10 +118,12 @@ export default function Appointment() {
         streamRef.current = null;
     };
 
+    if (!checkedAuth) return null;
+
     return (
     <div className="container-fluid" style={{ padding: "50px" }}>
         <div className="d-flex justify-content-between align-items-start mb-3">
-            <button className="btn btn-outline-secondary" onClick={() => navigate("/")}>
+            <button className="btn btn-outline-secondary" onClick={() => navigate("/home", { state: doctor })}>
             ← Back to Home
             </button>
 

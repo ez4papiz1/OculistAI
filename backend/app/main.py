@@ -175,15 +175,72 @@ def create_doctor(
     firstname: str = Form(...),
     lastname: str = Form(...),
     email: str = Form(""),
+    password: str = Form(...),
     db: Session = Depends(database.get_db)
 ):
     new_doctor = models.Doctor(
         firstname=firstname,
         lastname=lastname,
-        email=email
+        email=email,
+        hash=utils.hash_password(password)
     )
     db.add(new_doctor)
     db.commit()
     db.refresh(new_doctor)
     return {"id": new_doctor.id, "message": "Doctor created successfully"}
+
+@app.post("/update-doctor-name")
+def update_doctor_name(
+    doctor_id: int = Form(...),
+    firstname: str = Form(...),
+    lastname: str = Form(...),
+    db: Session = Depends(database.get_db)
+):
+    doctor = db.query(models.Doctor).filter(models.Doctor.id == doctor_id).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    doctor.firstname = firstname
+    doctor.lastname = lastname
+    db.commit()
+    return {"message": "Name updated"}
+
+@app.post("/update-doctor-email")
+def update_doctor_email(
+    doctor_id: int = Form(...),
+    email: str = Form(...),
+    db: Session = Depends(database.get_db)
+):
+    doctor = db.query(models.Doctor).filter(models.Doctor.id == doctor_id).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    doctor.email = email
+    db.commit()
+    return {"message": "Email updated"}
+
+@app.post("/update-doctor-password")
+def update_doctor_password(
+    doctor_id: int = Form(...),
+    old_password: str = Form(...),
+    new_password: str = Form(...),
+    db: Session = Depends(database.get_db)
+):
+    doctor = db.query(models.Doctor).filter(models.Doctor.id == doctor_id).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    if not utils.verify_password(old_password, doctor.hash):
+        raise HTTPException(status_code=400, detail="Old password is incorrect")
+    doctor.hash = utils.hash_password(new_password)
+    db.commit()
+    return {"message": "Password updated"}
+
+@app.post("/login")
+def login(
+    email: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(database.get_db)
+):
+    doctor = db.query(models.Doctor).filter(models.Doctor.email == email).first()
+    if not doctor or not utils.verify_password(password, doctor.hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return {"id": doctor.id, "email": doctor.email, "firstname": doctor.firstname, "lastname": doctor.lastname}
 

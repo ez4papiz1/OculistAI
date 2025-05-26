@@ -25,6 +25,7 @@ class Doctor(Base):
     firstname = Column(String(255), nullable=False)
     lastname = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False)
+    hash = Column(String(255), nullable=False)
 
 class Patient(Base):
     __tablename__ = "patients"

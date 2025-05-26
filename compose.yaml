@@ -45,6 +45,16 @@ services:
       interval: 10s
       retries: 3
 
+  seed_doctor:
+    image: curlimages/curl:latest
+    depends_on:
+      backend:
+        condition: service_started
+    entrypoint: ["sh", "-c", "sleep 10 && curl -X POST http://backend:8000/doctors -H 'Content-Type: application/x-www-form-urlencoded' -d 'firstname=Will&lastname=Smith&email=ws@o.ai&password=123' || true"]
+    networks:
+      - public
+      - private
+
 networks:
   public:
   private:

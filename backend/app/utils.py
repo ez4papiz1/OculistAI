@@ -1,6 +1,7 @@
 import openai
 import os
 import re
+import bcrypt
 
 
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -37,16 +38,6 @@ def transcribe(audio_path: str) -> str:
 
     return text.strip()
 
-def summarize(text: str) -> str:
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "Summarize the following eye doctor appointment conversation. Use the following bullet points: Purpose of visit, preexisting conditions, previous Visual acuity, new visual acuity, diagnosis, recommended medication, follow-up appointment, and additional notes. If any of these points are not mentioned, do not include them in the summary. Always use numbers instead of words for numbers (eg. -1 instead of minus one)."},
-            {"role": "user", "content": text}
-        ]
-    )
-    return response.choices[0].message.content.strip()
-
 def summarize(text: str, appointment_type: str) -> str:
     prompt_map = {
         "routine": (
@@ -76,3 +67,11 @@ def summarize(text: str, appointment_type: str) -> str:
         ]
     )
     return response.choices[0].message.content.strip()
+
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))

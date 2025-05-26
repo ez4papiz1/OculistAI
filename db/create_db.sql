@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS doctors (
     id INT AUTO_INCREMENT PRIMARY KEY,
     firstname VARCHAR(255) NOT NULL,
     lastname VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL
+    email VARCHAR(255) UNIQUE NOT NULL,
+    hash VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS patients (
@@ -40,11 +41,5 @@ CREATE TABLE IF NOT EXISTS transcriptions (
     FOREIGN KEY (appointment_id) REFERENCES appointments(id)
 );
 
-INSERT INTO doctors (firstname, lastname, email)
-VALUES ('Will', 'Smith', 'will.smith@clinic.com');
-
 INSERT INTO patients (firstname, lastname, birth_date, notes)
 VALUES ('St', 'Vankoff', '1990-06-15', 'First-time visit');
-
-INSERT INTO appointments (patient_id, doctor_id, appointment_time)
-VALUES (1, 1, '2025-01-01 08:00:00');
