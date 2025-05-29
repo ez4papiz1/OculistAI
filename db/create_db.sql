@@ -42,4 +42,4 @@ CREATE TABLE IF NOT EXISTS transcriptions (
 );
 
 INSERT INTO patients (firstname, lastname, birth_date, notes)
-VALUES ('St', 'Vankoff', '1990-06-15', 'First-time visit');
+VALUES ('John', 'Doe', '1990-06-15', 'First-time visit');

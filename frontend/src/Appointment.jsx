@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import WaveSurfer from "wavesurfer.js";
 
 export default function Appointment() {
     const { id } = useParams();
@@ -29,10 +30,15 @@ export default function Appointment() {
     ]);
     const [editingIndex, setEditingIndex] = useState(null);
     const [editingValue, setEditingValue] = useState("");
+    const [loadingSummary, setLoadingSummary] = useState(false);
+    const [loadingTranscript, setLoadingTranscript] = useState(false);
     const mediaRecorder = useRef(null);
     const audioChunks = useRef([]);
     const streamRef = useRef(null);
-
+    const waveSurferRef = useRef(null);
+    const waveformContainerRef = useRef(null);
+    const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+    const [showSpeedSlider, setShowSpeedSlider] = useState(false);
 
     useEffect(() => {
         if (!doctor) {
@@ -91,6 +97,49 @@ export default function Appointment() {
         return () => clearTimeout(delay);
     }, [notes]);
 
+    useEffect(() => {
+        if (waveSurferRef.current) {
+            waveSurferRef.current.setPlaybackRate(playbackSpeed);
+        }
+    }, [playbackSpeed]);
+
+    useEffect(() => {
+        if (audioURL && waveformContainerRef.current) {
+            if (waveSurferRef.current) {
+                waveSurferRef.current.destroy();
+            }
+            waveSurferRef.current = WaveSurfer.create({
+                container: waveformContainerRef.current,
+                waveColor: "#a0a0a0",
+                progressColor: "#007bff",
+                barWidth: 3,
+                barRadius: 10,
+                barGap: 3,
+                responsive: true,
+                dragToSeek: true,
+                cursorWidth: 3,
+                height: 80,
+                cursorColor: 'red',
+            });
+            const style = document.createElement('style');
+            style.innerHTML = `
+                .waveform-container .wavesurfer-cursor {
+                    height: 30px !important;
+                    top: 15px !important;
+                }
+            `;
+            waveformContainerRef.current.classList.add('waveform-container');
+            waveformContainerRef.current.appendChild(style);
+            waveSurferRef.current.load(audioURL);
+            waveSurferRef.current.setPlaybackRate(playbackSpeed);
+        }
+        return () => {
+            if (waveSurferRef.current) {
+                waveSurferRef.current.destroy();
+                waveSurferRef.current = null;
+            }
+        };
+    }, [audioURL]);
 
     const startRecording = async () => {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -126,13 +175,19 @@ export default function Appointment() {
             const data = await res.json();
             setSummary(data.summary);
             setTranscript(data.transcript);
+            setLoadingSummary(false);
+            setLoadingTranscript(false);
         };
 
+        setLoadingSummary(false);
+        setLoadingTranscript(false);
         mediaRecorder.current.start();
         setRecording(true);
     };
 
     const stopRecording = () => {
+        setLoadingSummary(true);
+        setLoadingTranscript(true);
         mediaRecorder.current.stop();
         setRecording(false);
         streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -164,6 +219,8 @@ export default function Appointment() {
             const data = await res.json();
             setSummary(data.summary);
             setTranscript(data.transcript);
+            setLoadingSummary(false);
+            setLoadingTranscript(false);
         };
         return () => {
             mediaRecorder.current.onstop = origOnStop;
@@ -254,58 +311,198 @@ export default function Appointment() {
                 <button className="btn btn-outline-primary ms-2" onClick={() => setShowSummaryModal(true)} >Edit Summary</button>
             )}
         </div>
-        {summary && (
         <div className="row mb-4">
-            <div className="col-md-6">
+            <div className="col-md-6" style={{ height: "475px" }}>
             <h3>Transcript</h3>
-            <div className="border p-3 overflow-auto" style={{ maxHeight: "500px" }}>
-                {transcript.split(/(?=\[\d{2}:\d{2}(?::\d{2})?\])/g).map((segment, index) => (
-                    <div key={index} style={{ paddingBottom: "20px" }}>{segment.trim()}</div>
-                ))}
+            <div className="border p-3 overflow-auto" style={{ height: "450px" }}>
+                {loadingTranscript ? (
+                    <div className="d-flex justify-content-center align-items-center w-100 h-100">
+                        <div className="spinner-border text-primary" role="status" style={{ height: "5rem", width: "5rem" }}>
+                            <span className="sr-only"></span>
+                        </div>
+                    </div>
+                ) : (
+                    Array.isArray(transcript) && transcript.length > 0 ? (
+                        transcript.map((segment, index) => {
+                            const seconds = segment.start;
+                            const mins = Math.floor(seconds / 60);
+                            const secs = Math.floor(seconds % 60);
+                            const timestamp = `[${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}]`;
+                            return (
+                                <div key={index} style={{ display: 'flex', alignItems: 'center', paddingBottom: '20px' }}>
+                                    <button
+                                        className="btn btn-sm btn-link p-0 me-2"
+                                        title={`Jump to ${timestamp}`}
+                                        style={{ minWidth: 0 }}
+                                        onClick={() => {
+                                            const ws = waveSurferRef.current;
+                                            if (ws) {
+                                                const duration = ws.getDuration();
+                                                ws.seekTo(Math.min(1, seconds / duration));
+                                            }
+                                        }}
+                                    >
+                                        <span className="material-icons" style={{ fontSize: 20, verticalAlign: 'middle' }}>skip_next</span>
+                                    </button>
+                                    <span>
+                                        <strong>{timestamp}</strong> {segment.text}
+                                    </span>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="d-flex align-items-center justify-content-center text-muted w-100 h-100">Waiting for recording...</div>
+                    )
+                )}
             </div>
             </div>
-            <div className="col-md-6">
+            <div className="col-md-6" style={{ height: "475px" }}>
             <h3>Summary</h3>
-            <div className="border p-3 overflow-auto" style={{ maxHeight: "500px" }}>
-                {summary
-                    .split("\n")
-                    .filter((line) => line.trim().startsWith("-"))
-                    .map((point, index) => {
-                        const [title, ...rest] = point.replace(/^-/, "").split(":");
-                        return (
-                            <div key={index} style={{ marginBottom: "1.2em", lineHeight: "1.2" }}>
-                                <strong>• {title.trim()}:</strong>
-                                {rest.length > 0 && (
-                                    <>
-                                        <br /><br />
-                                        <span>&nbsp;&nbsp;&nbsp;&nbsp;{rest.join(":").trim()}</span>
-                                    </>
-                                )}
-                            </div>
-                        );
-                    })
-                }
+            <div className="border p-3 overflow-auto" style={{ height: "450px" }}>
+                {loadingSummary ? (
+                    <div className="d-flex justify-content-center align-items-center w-100 h-100">
+                        <div className="spinner-border text-primary" role="status" style={{ height: "5rem", width: "5rem" }}>
+                            <span className="sr-only"></span>
+                        </div>
+                    </div>
+                ) : (
+                    typeof summary === "string" && summary.length > 0 ? (
+                        summary
+                            .split("\n")
+                            .filter((line) => line.trim().startsWith("-"))
+                            .map((point, index) => {
+                                const [title, ...rest] = point.replace(/^-/, "").split(":");
+                                return (
+                                    <div key={index} style={{ marginBottom: "1.2em", lineHeight: "1.2" }}>
+                                        <strong>• {title.trim()}:</strong>
+                                        {rest.length > 0 && (
+                                            <>
+                                                <br /><br />
+                                                <span>&nbsp;&nbsp;&nbsp;&nbsp;{rest.join(":").trim()}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })
+                    ) : (
+                        <div className="d-flex align-items-center justify-content-center text-muted w-100 h-100">Waiting for recording...</div>
+                    )
+                )}
             </div>
             </div>
         </div>
-        )}
-
+        <div className="d-flex justify-content-between align-items-center mb-4">
         {audioURL && (
-        <div className="mb-4">
-            <audio className="w-25" controls preload="auto" src={audioURL}></audio>
-        </div>
+            <div className="mb-4">
+                <div className="card shadow-sm p-3" style={{ width: '191%' }}>
+                    <div ref={waveformContainerRef} style={{ width: '100%', minHeight: 60 }}></div>
+                    <div className="d-flex justify-content-center align-items-center mt-3 gap-3">
+                        <button
+                            className="btn btn-icon"
+                            title="Back 5 seconds"
+                            onClick={() => {
+                                const ws = waveSurferRef.current;
+                                if (ws) {
+                                    const duration = ws.getDuration();
+                                    const current = ws.getCurrentTime();
+                                    ws.seekTo(Math.max(0, (current - 5) / duration));
+                                }
+                            }}
+                        >
+                            <span className="material-icons" style={{ fontSize: 32 }}>replay_5</span>
+                        </button>
+                        <button
+                            className="btn btn-icon mx-2"
+                            title={waveSurferRef.current && waveSurferRef.current.isPlaying() ? "Pause" : "Play"}
+                            onClick={() => {
+                                if (waveSurferRef.current) waveSurferRef.current.playPause();
+                            }}
+                        >
+                            <span className="material-icons" style={{ fontSize: 40 }}>
+                                {waveSurferRef.current && waveSurferRef.current.isPlaying() ? "pause" : "play_arrow"}
+                            </span>
+                        </button>
+                        <button
+                            className="btn btn-icon"
+                            title="Forward 5 seconds"
+                            onClick={() => {
+                                const ws = waveSurferRef.current;
+                                if (ws) {
+                                    const duration = ws.getDuration();
+                                    const current = ws.getCurrentTime();
+                                    ws.seekTo(Math.min(1, (current + 5) / duration));
+                                }
+                            }}
+                        >
+                            <span className="material-icons" style={{ fontSize: 32 }}>forward_5</span>
+                        </button>
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                className="btn btn-icon"
+                                title="Playback Speed"
+                                onClick={() => setShowSpeedSlider(s => !s)}
+                            >
+                                <span className="material-icons" style={{ fontSize: 28 }}>speed</span>
+                            </button>
+                            {showSpeedSlider && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: '80%',
+                                        bottom: '-50%',
+                                        background: '#fff',
+                                        border: '1px solid #ccc',
+                                        borderRadius: 8,
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                        padding: 16,
+                                        zIndex: 10,
+                                        minWidth: 180,
+                                        transition: 'bottom 0.3s',
+                                    }}
+                                >
+                                    <label className="form-label mb-1" style={{ fontWeight: 600 }}>Playback Speed</label>
+                                    <input
+                                        type="range"
+                                        min={0.25}
+                                        max={2}
+                                        step={0.05}
+                                        value={playbackSpeed}
+                                        onChange={e => {
+                                            const val = parseFloat(e.target.value);
+                                            setPlaybackSpeed(val);
+                                            if (waveSurferRef.current) waveSurferRef.current.setPlaybackRate(val);
+                                        }}
+                                        style={{ width: '100%' }}
+                                    />
+                                    <div className="d-flex justify-content-between align-items-center mt-2">
+                                        <div style={{ fontWeight: 500 }}>{playbackSpeed.toFixed(2)}x</div>
+                                        <button className="btn btn-sm btn-link p-0 ms-2" title="Reset speed"
+                                            onClick={() => {
+                                                setPlaybackSpeed(1.0);
+                                                if (waveSurferRef.current) waveSurferRef.current.setPlaybackRate(1.0);
+                                            }}
+                                        >
+                                            <span className="material-icons" style={{ fontSize: 22, verticalAlign: 'middle' }}>restart_alt</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
         )}
 
-        <div className="mb-5 w-25">
+        <div className="mb-5" style={{ width: "49%" }}>
         <label className="form-label fw-bold">Notes:</label>
         <textarea
             className="form-control"
-            rows="4"
+            rows="7"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
         />
         </div>
-
+        </div>
         {showSummaryModal && (
             <div className="modal d-block" tabIndex="-1" role="dialog">
                 <div className="modal-dialog modal-dialog-centered" role="document">

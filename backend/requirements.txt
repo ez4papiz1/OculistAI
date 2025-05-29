@@ -5,3 +5,4 @@ pymysql
 python-multipart
 openai
 bcrypt
+pydub

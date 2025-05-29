@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from datetime import datetime
 
 import os
+import json
 
 app = FastAPI()
 
@@ -40,11 +41,14 @@ async def upload_audio(
     with open(path, "wb") as f:
         f.write(file_bytes)
 
-    transcript = utils.transcribe(path)
-    summary = utils.summarize(transcript, appointment_type, bullets)
+    transcript = utils.transcribe(path)  # now a list of dicts
+    # For summary, join all text for the LLM
+    summary = utils.summarize(" ".join([s['text'] for s in transcript]), appointment_type, bullets)
 
+    # Store transcript as JSON string in DB for compatibility
+    transcript_json = json.dumps(transcript)
     transcription = crud.save_transcription(
-        db, appointment_id, path, transcript, summary
+        db, appointment_id, path, transcript_json, summary
     )
 
     return {"summary": summary, "transcript": transcript}
@@ -90,8 +94,14 @@ def get_transcription_by_appointment(appointment_id: int, db: Session = Depends(
     if not transcription:
         raise HTTPException(status_code=404, detail="Transcription not found")
 
+    import json
+    try:
+        transcript = json.loads(transcription.transcript)
+    except Exception:
+        transcript = transcription.transcript  # fallback for legacy data
+
     return {
-        "transcript": transcription.transcript,
+        "transcript": transcript,
         "summary": transcription.summary,
         "audio_path": transcription.audio_path
     }

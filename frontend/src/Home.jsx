@@ -206,27 +206,39 @@ return (
                 <tr>
                 <th>
                     Appointment #
-                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('id')}>⇅</button>
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('id')}>
+                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                    </button>
                 </th>
                 <th>
                     Date
-                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('appointment_time')}>⇅</button>
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('appointment_time')}>
+                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                    </button>
                 </th>
                 <th>
                     Status
-                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('status')}>⇅</button>
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('status')}>
+                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                    </button>
                 </th>
                 <th>
                     Type
-                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('type')}>⇅</button>
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('type')}>
+                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                    </button>
                 </th>
                 <th>
                     Doctor
-                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('doctor_name')}>⇅</button>
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('doctor_name')}>
+                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                    </button>
                 </th>
                 <th>
                     Patient
-                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('patient_name')}>⇅</button>
+                    <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('patient_name')}>
+                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                    </button>
                 </th>
                 <th>Action</th>
                 </tr>

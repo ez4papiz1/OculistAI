@@ -3,11 +3,12 @@ import os
 import re
 import bcrypt
 import json
+from pydub import AudioSegment
 
 
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def transcribe(audio_path: str) -> str:
+def transcribe(audio_path: str):
     with open(audio_path, "rb") as f:
         response = client.audio.transcriptions.create(
             model="whisper-1",
@@ -15,29 +16,23 @@ def transcribe(audio_path: str) -> str:
             response_format="verbose_json"
         )
 
-    raw_lines = []
+    sentences_with_times = []
     for segment in response.segments:
         text = segment.text.strip()
         sentences = re.split(r'(?<=[.!?])\s+', text)
-        duration = segment.end - segment.start
+        segment_duration = segment.end - segment.start
+        sentence_count = len(sentences)
 
         for i, sentence in enumerate(sentences):
             if not sentence.strip():
                 continue
+            start_time = segment.start + (i / sentence_count) * segment_duration
+            sentences_with_times.append({
+                "start": round(start_time, 2),
+                "text": sentence.strip()
+            })
 
-            relative_time = segment.start + (i / max(len(sentences), 1)) * duration
-            timestamp = f"[{int(relative_time) // 60:02}:{int(relative_time) % 60:02}]"
-            raw_lines.append(f"{timestamp} {sentence.strip()}")
-
-    raw_text = "\n".join(raw_lines)
-
-    text = re.sub(
-        r'(?<!^)(?<![.!?]\s)\[\d{2}:\d{2}\]',
-        '',
-        raw_text
-    )
-
-    return text.strip()
+    return sentences_with_times
 
 def summarize(text: str, appointment_type: str, bullets: str) -> str:
     bullet_list = json.loads(bullets)
