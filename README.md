@@ -10,6 +10,8 @@ The system allows for easy clinical documentation by capturing conversations dur
 - Automatic transcription using OpenAI Whisper
 - Timestamped dialog
 - Summarization of patient dialogue using GPT models
+- Appointment schedule
+- Doctor and user account management
 - Full-stack setup with React (frontend), FastAPI (backend), MariaDB, and Docker
 
 ## To run this locally:
