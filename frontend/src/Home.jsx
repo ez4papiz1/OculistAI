@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import "./datepicker.css";
 
 const appointmentTypeOptions = [
     { value: "routine", label: "Routine Eye Exam" },
@@ -245,11 +248,16 @@ useEffect(() => {
             if (showChangePasswordModal) setShowChangePasswordModal(false);
             if (showCalendarModal) setShowCalendarModal(false);
             if (showEditAppModal) { setShowEditAppModal(false); setEditAppData(null); }
+            if (showDoctorsModal) setShowDoctorsModal(false);
+            if (showPatientsModal) setShowPatientsModal(false);
+            if (showEditDoctorModal) setShowEditDoctorModal(false);
+            if (showEditPatientModal) setShowEditPatientModal(false);
+            if (removeModal.show) setRemoveModal({ show: false, apptId: null, anchorRect: null });
         }
     }
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-}, [showAppModal, showPatientModal, showDoctorModal, showSettingsModal, showChangeNameModal, showChangeEmailModal, showChangePasswordModal, showCalendarModal, showEditAppModal]);
+}, [showAppModal, showPatientModal, showDoctorModal, showSettingsModal, showChangeNameModal, showChangeEmailModal, showChangePasswordModal, showCalendarModal, showEditAppModal, showDoctorsModal, showPatientsModal, showEditDoctorModal, showEditPatientModal, removeModal]);
 
 if (!checkedAuth) return null;
 
@@ -419,9 +427,28 @@ return (
 
                 <div className="mb-3">
                     <label className="form-label">Date & Time</label>
-                    <input className="form-control" type="datetime-local" required
-                    value={form.appointment_time}
-                    onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} />
+                    <div className="input-group">
+                        <DatePicker
+                            wrapperClassName="w-75"
+                            className={"form-control rounded-end-0"}
+                            calendarClassName="border border-2 rounded shadow"
+                            popperClassName="shadow"
+                            selected={form.appointment_time ? new Date(form.appointment_time) : null}
+                            onChange={date => setForm({ ...form, appointment_time: date ? date.toISOString().slice(0, 16) : "" })}
+                            showTimeSelect
+                            timeIntervals={15}
+                            dateFormat="yyyy-MM-dd HH:mm"
+                            placeholderText="Select date and time"
+                            isClearable
+                            style={{backgroundColor: 'blue'}}
+                        />
+                        <button type="button" className="btn btn-outline-primary w-25 rounded-start-0" onClick={() => {
+                            const ms = 1000 * 60 * 15;
+                            var tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                            const now = new Date(Math.round((new Date().getTime()-tzoffset) / ms) * ms);
+                            setForm({ ...form, appointment_time: now.toISOString().slice(0, 16) });
+                        }}>Today</button>
+                    </div>
                 </div>
 
                 <div className="mb-3">
@@ -460,10 +487,18 @@ return (
                     onChange={(e) => setNewPatient({ ...newPatient, lastname: e.target.value })} />
                 </div>
                 <div className="mb-3">
-                    <label className="form-label">Birth Date</label>
-                    <input className="form-control" required type="date"
-                    value={newPatient.birth_date}
-                    onChange={(e) => setNewPatient({ ...newPatient, birth_date: e.target.value })} />
+                    <label className="form-label">Birth Date</label><br />
+                    <DatePicker
+                        wrapperClassName="w-100"
+                        className={"form-control"}
+                        calendarClassName="border border-2 rounded shadow"
+                        popperClassName="shadow"
+                        selected={newPatient.birth_date ? new Date(newPatient.birth_date) : null}
+                        onChange={date => setNewPatient({ ...newPatient, birth_date: date ? date.toISOString().slice(0, 10) : "" })}
+                        dateFormat="yyyy-MM-dd"
+                        placeholderText="Select birth date"
+                        isClearable
+                    />
                 </div>
                 <div className="mb-3">
                     <label className="form-label">Notes</label>
@@ -562,7 +597,7 @@ return (
                     <button className="btn btn-outline-primary" onClick={openChangeEmailModal}>Change Email</button>
                     <button className="btn btn-outline-primary" onClick={() => { setShowChangePasswordModal(true); setShowSettingsModal(false); }}>Change Password</button>
                     <button className="btn btn-danger mt-2" onClick={() => {navigate("/login", { replace: true }); }}>Logout</button>
-                    <button className="btn btn-danger mt-2" onClick={() => setShowSettingsModal(false)}>Close</button>
+                    <button className="btn btn-secondary mt-2" onClick={() => setShowSettingsModal(false)}>Close</button>
                 </div>
             </div>
         </div>
@@ -632,10 +667,13 @@ return (
                         setDoctor({ ...doctor, email: emailField });
                         setShowChangeEmailModal(false);
                         setShowSettingsModal(true);
-                    } else if (err.detail === "exists") {
-                        setDoctorError("Doctor with this email already exists.");
                     } else {
-                        alert("Failed to update doctor.");
+                        const err = await res.json();
+                        if (err.detail === "exists") {
+                            setDoctorError("Doctor with this email already exists.");
+                        } else {
+                            alert("Failed to update doctor.");
+                        }
                     }
                 }}>
                     <div className="mb-3">
@@ -774,9 +812,27 @@ return (
             </div>
             <div className="mb-3">
                 <label className="form-label">Date & Time</label>
-                <input className="form-control" type="datetime-local" required
-                    value={editAppData.appointment_time}
-                    onChange={e => setEditAppData({ ...editAppData, appointment_time: e.target.value })} />
+                <div className="input-group">
+                    <DatePicker
+                        wrapperClassName="w-75"
+                        className={"form-control rounded-end-0"}
+                        calendarClassName="border border-2 rounded shadow"
+                        popperClassName="shadow"
+                        selected={editAppData.appointment_time ? new Date(editAppData.appointment_time) : null}
+                        onChange={date => setEditAppData({ ...editAppData, appointment_time: date ? date.toISOString().slice(0, 16) : "" })}
+                        showTimeSelect
+                        timeIntervals={15}
+                        dateFormat="yyyy-MM-dd HH:mm"
+                        placeholderText="Select date and time"
+                        isClearable
+                    />
+                    <button type="button" className="btn btn-outline-primary w-25 rounded-start-0" onClick={() => {
+                        const ms = 1000 * 60 * 15;
+                        var tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                        const now = new Date(Math.round((new Date().getTime()-tzoffset) / ms) * ms);
+                        setEditAppData({ ...editAppData, appointment_time: now.toISOString().slice(0, 16) });
+                    }}>Today</button>
+                </div>
             </div>
             <div className="mb-3">
                 <label className="form-label">Notes</label>
@@ -857,7 +913,7 @@ return (
                 <div className="d-flex flex-column gap-3">
                     <button className="btn btn-outline-primary" onClick={() => { setShowDoctorModal(true); setShowDoctorsModal(false); }}>Add Doctor</button>
                     <button className="btn btn-outline-secondary" onClick={() => { setShowEditDoctorModal(true); setShowDoctorsModal(false); }}>Edit Doctor</button>
-                    <button className="btn btn-danger mt-2" onClick={() => setShowDoctorsModal(false)}>Close</button>
+                    <button className="btn btn-secondary mt-2" onClick={() => setShowDoctorsModal(false)}>Close</button>
                 </div>
             </div>
         </div>
@@ -941,7 +997,7 @@ return (
                 <div className="d-flex flex-column gap-3">
                     <button className="btn btn-outline-primary" onClick={() => { setShowPatientModal(true); setShowPatientsModal(false); }}>Add Patient</button>
                     <button className="btn btn-outline-secondary" onClick={() => { setShowEditPatientModal(true); setShowPatientsModal(false); }}>Edit Patient</button>
-                    <button className="btn btn-danger mt-2" onClick={() => setShowPatientsModal(false)}>Close</button>
+                    <button className="btn btn-secondary mt-2" onClick={() => setShowPatientsModal(false)}>Close</button>
                 </div>
             </div>
         </div>
@@ -1012,7 +1068,17 @@ return (
                     </div>
                     <div className="mb-3">
                         <label className="form-label">Birth Date</label>
-                        <input className="form-control" required type="date" value={editPatientForm.birth_date} onChange={e => setEditPatientForm({ ...editPatientForm, birth_date: e.target.value })} />
+                        <DatePicker
+                            wrapperClassName="w-100"
+                            className={"form-control"}
+                            calendarClassName="border border-2 rounded shadow"
+                            popperClassName="shadow"
+                            selected={editPatientForm.birth_date ? new Date(editPatientForm.birth_date) : null}
+                            onChange={date => setEditPatientForm({ ...editPatientForm, birth_date: date ? date.toISOString().slice(0, 10) : "" })}
+                            dateFormat="yyyy-MM-dd"
+                            placeholderText="Select birth date"
+                            isClearable
+                        />
                     </div>
                     <div className="mb-3">
                         <label className="form-label">Notes</label>
@@ -1132,10 +1198,10 @@ function CalendarModal({ appointments, doctor, onClose, navigate }) {
             <div className="modal-dialog modal-dialog-centered modal-xl" role="document">
                 <div className="modal-content p-0" style={{ minHeight: 600 }}>
                     <div className="row g-0">
-                        <div className="col-md-4 border-end bg-light p-4 d-flex flex-column" style={{ minHeight: 600 }}>
+                        <div className="col-md-4 border-end bg-light p-4 d-flex flex-column w-25" style={{ minHeight: 600 }}>
                             <div className="d-flex align-items-center mb-3 gap-2">
                                 <span className="material-icons text-primary" style={{ fontSize: '2rem' }}>event</span>
-                                <h4 className="mb-0">{selectedDate ? selectedDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : ''}</h4>
+                                <h5 className="mb-0">{selectedDate ? selectedDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : ''} </h5>
                             </div>
                             <div className="mb-3">
                                 <select className="form-select mb-2" value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)}>
@@ -1163,14 +1229,17 @@ function CalendarModal({ appointments, doctor, onClose, navigate }) {
                                 ) : (
                                     filteredAppointments.map(appt => (
                                         <div key={appt.id} className={`card p-2 mb-3 shadow-sm ${cardColor(appt.status)}`}>
-                                            <div className="fw-bold">Appointment #{appt.id}</div>
-                                            <div>Patient: {appt.patient_name}</div>
-                                            <div>Doctor: {appt.doctor_name}</div>
-                                            <div>Type: {typeLabel(appt.type)}</div>
-                                            <div>Date: {new Date(appt.appointment_time).toLocaleString([], {
+                                            <div className="fw-bold">Appointment #{appt.id}<br /><br /></div>
+                                            <div><span className="fw-bold">Patient:</span> {appt.patient_name}</div>
+                                            <div><span className="fw-bold">Doctor:</span> {appt.doctor_name}</div>
+                                            <div><span className="fw-bold">Type:</span> {typeLabel(appt.type)}</div>
+                                            <div>
+                                            <span className="fw-bold">Time:</span>{" "}
+                                            {new Date(appt.appointment_time).toLocaleString([], {
                                                 hour: '2-digit',
                                                 minute: '2-digit'
-                                            })}</div>
+                                            })}
+                                            </div>
                                             <div className="d-flex justify-content-between align-items-center mt-1">
                                                 <span></span>
                                                 <button
@@ -1254,7 +1323,7 @@ function CalendarModal({ appointments, doctor, onClose, navigate }) {
                                 }}>
                                     <span className="material-icons align-middle me-1">today</span>Today
                                 </button>
-                                <button className="btn btn-danger" onClick={onClose}>Close</button>
+                                <button className="btn btn-secondary" onClick={onClose}>Close</button>
                             </div>
                         </div>
                     </div>
