@@ -286,3 +286,20 @@ def update_appointment(
     db.refresh(appointment)
     return {"status": "success", "appointment_id": appointment.id}
 
+@app.post("/delete-appointment")
+def delete_appointment(
+    appointment_id: int = Form(...),
+    db: Session = Depends(database.get_db)
+):
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    transcriptions = db.query(models.Transcription).filter(models.Transcription.appointment_id == appointment_id).all()
+    for t in transcriptions:
+        if t.audio_path and os.path.exists(t.audio_path):
+            os.remove(t.audio_path)
+        db.delete(t)
+    db.delete(appointment)
+    db.commit()
+    return {"status": "success"}
+

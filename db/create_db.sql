@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     appointment_time DATETIME NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     notes TEXT,
-    type ENUM('routine', 'contacts', 'postsurgery', 'special') DEFAULT 'routine',
+    type ENUM('routine', 'contacts', 'postsurgery', 'special', 'glasses', 'surgery', 'emergency') DEFAULT 'routine',
     status ENUM('scheduled', 'completed', 'canceled') DEFAULT 'scheduled',
     FOREIGN KEY (patient_id) REFERENCES patients(id),
     FOREIGN KEY (doctor_id) REFERENCES doctors(id)

@@ -1,6 +1,29 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
+const appointmentTypeOptions = [
+    { value: "routine", label: "Routine Eye Exam" },
+    { value: "glasses", label: "Glasses Fitting" },
+    { value: "contacts", label: "Contact Lens Fitting" },
+    { value: "surgery", label: "Surgery Consultation" },
+    { value: "postsurgery", label: "Post-surgery Consultation" },
+    { value: "emergency", label: "Emergency Visit" },
+    { value: "special", label: "Special Examination" },
+];
+
+function renderTypeLabel(type) {
+    switch(type) {
+        case 'routine': return 'Routine Eye Exam';
+        case 'glasses': return 'Glasses Fitting';
+        case 'contacts': return 'Contact Lens Fitting';
+        case 'surgery': return 'Surgery Consultation';
+        case 'postsurgery': return 'Post-surgery Consultation';
+        case 'emergency': return 'Emergency Visit';
+        case 'special': return 'Special Examination';
+        default: return type;
+    }
+}
+
 export default function Home() {
 const location = useLocation();
 const navigate = useNavigate();
@@ -43,6 +66,7 @@ const [showEditAppModal, setShowEditAppModal] = useState(false);
 const [editAppData, setEditAppData] = useState(null);
 const [doctorError, setDoctorError] = useState("");
 const [patientError, setPatientError] = useState("");
+const [removeModal, setRemoveModal] = useState({ show: false, apptId: null, anchorRect: null });
 
 useEffect(() => {
     const fetchAppointments = async () => {
@@ -288,48 +312,62 @@ return (
                         <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
                     </button>
                 </th>
-                <th style={{ width: '120px' }}>Action</th>
+                <th style={{ width: '200px' }}>Action</th>
                 </tr>
             </thead>
             <tbody>
-                {sortedAppointments.map((appt) => (
-                <tr key={appt.id}>
-                    <td>{appt.id}</td>
-                    <td>{new Date(appt.appointment_time).toLocaleString([], {
-                    year: 'numeric',
-                    month: 'short',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                    })}</td>
-                    <td>{{ scheduled: "Scheduled", completed: "Completed", canceled: "Canceled" }[appt.status]}</td>
-                    <td>{{ routine: "Routine Eye Exam", contacts: "Contact Lens Fitting", postsurgery: "Post-Operative Check", special: "Special" }[appt.type]}</td>
-                    <td>{appt.doctor_name}</td>
-                    <td>{appt.patient_name}</td>
-                    <td>
-                    <button className="btn btn-outline-primary btn-sm me-1" onClick={() => navigate(`/appointment/${appt.id}`, {state: { doctor } })}>Open</button>
-                    <button className="btn btn-outline-secondary btn-sm" onClick={() => {
+                {sortedAppointments.length === 0 ? (
+                    <tr>
+                        <td colSpan="7" className="p-0 border-0">
+                            <div className="d-flex align-items-center justify-content-center text-muted w-100 h-100" style={{ minHeight: 450 }}>
+                                No appointments available
+                            </div>
+                        </td>
+                    </tr>
+                ) : (
+                    sortedAppointments.map((appt) => (
+                    <tr key={appt.id}>
+                        <td>{appt.id}</td>
+                        <td>{new Date(appt.appointment_time).toLocaleString([], {
+                        year: 'numeric',
+                        month: 'short',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                        })}</td>
+                        <td>{{ scheduled: "Scheduled", completed: "Completed", canceled: "Canceled" }[appt.status]}</td>
+                        <td>{renderTypeLabel(appt.type)}</td>
+                        <td>{appt.doctor_name}</td>
+                        <td>{appt.patient_name}</td>
+                        <td>
+                        <button className="btn btn-outline-primary btn-sm me-1" onClick={() => navigate(`/appointment/${appt.id}`, {state: { doctor } })}>Open</button>
+                        <button className="btn btn-outline-secondary btn-sm me-1" onClick={() => {
 
-                        let doctorId = appt.doctor_id;
-                        let patientId = appt.patient_id;
-                        if (!doctorId && appt.doctor_name) {
-                            const foundDoc = doctors.find(doc => `${doc.firstname} ${doc.lastname}` === appt.doctor_name);
-                            if (foundDoc) doctorId = foundDoc.id;
-                        }
-                        if (!patientId && appt.patient_name) {
-                            const foundPat = patients.find(pat => `${pat.firstname} ${pat.lastname}` === appt.patient_name);
-                            if (foundPat) patientId = foundPat.id;
-                        }
-                        setEditAppData({
-                            ...appt,
-                            doctor_id: doctorId || "",
-                            patient_id: patientId || ""
-                        });
-                        setShowEditAppModal(true);
-                    }}>Edit</button>
-                    </td>
-                </tr>
-                ))}
+                            let doctorId = appt.doctor_id;
+                            let patientId = appt.patient_id;
+                            if (!doctorId && appt.doctor_name) {
+                                const foundDoc = doctors.find(doc => `${doc.firstname} ${doc.lastname}` === appt.doctor_name);
+                                if (foundDoc) doctorId = foundDoc.id;
+                            }
+                            if (!patientId && appt.patient_name) {
+                                const foundPat = patients.find(pat => `${pat.firstname} ${pat.lastname}` === appt.patient_name);
+                                if (foundPat) patientId = foundPat.id;
+                            }
+                            setEditAppData({
+                                ...appt,
+                                doctor_id: doctorId || "",
+                                patient_id: patientId || ""
+                            });
+                            setShowEditAppModal(true);
+                        }}>Edit</button>
+                        <button className="btn btn-outline-danger btn-sm" ref={el => appt._removeBtn = el} onClick={e => {
+                            const rect = e.target.getBoundingClientRect();
+                            setRemoveModal({ show: true, apptId: appt.id, anchorRect: rect });
+                        }}>Remove</button>
+                        </td>
+                    </tr>
+                    ))
+                )}
             </tbody>
             </table>
         </div>
@@ -366,10 +404,9 @@ return (
                     <label className="form-label">Visit Type</label>
                     <select className="form-select" value={form.type}
                     onChange={(e) => setForm({ ...form, type: e.target.value })}>
-                    <option value="routine">Routine Eye Exam</option>
-                    <option value="contacts">Contact Lens Fitting</option>
-                    <option value="postsurgery">Post-Operative Check</option>
-                    <option value="special">Special</option>
+                    {appointmentTypeOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
                     </select>
                 </div>
 
@@ -721,10 +758,9 @@ return (
                 <label className="form-label">Visit Type</label>
                 <select className="form-select" value={editAppData.type}
                     onChange={e => setEditAppData({ ...editAppData, type: e.target.value })}>
-                    <option value="routine">Routine Eye Exam</option>
-                    <option value="contacts">Contact Lens Fitting</option>
-                    <option value="postsurgery">Post-Operative Check</option>
-                    <option value="special">Special</option>
+                    {appointmentTypeOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
                 </select>
             </div>
             <div className="mb-3">
@@ -747,6 +783,61 @@ return (
         </div>
         </div>
     </div>
+)}
+
+{removeModal.show && (
+    <div className="justify-content-end" style={{
+        position: 'fixed',
+        top: removeModal.anchorRect ? removeModal.anchorRect.bottom + window.scrollY + 4 : '50%',
+        right: removeModal.anchorRect
+                ? Math.max(window.innerWidth - removeModal.anchorRect.right, 20)
+                : 20,
+        zIndex: 2000,
+        minWidth: 100,
+        background: 'white',
+        border: '1px solid #dee2e6',
+        borderRadius: 8,
+        boxShadow: '0 2px 16px rgba(0,0,0,0.15)',
+        padding: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        maxWidth: 220,
+    }}
+    onClick={e => e.stopPropagation()}
+    >
+        <div className="mb-2">Are you sure?</div>
+        <div className="d-flex justify-content-center gap-2">
+            <button className="btn btn-danger btn-sm" onClick={async () => {
+                const formData = new FormData();
+                formData.append("appointment_id", removeModal.apptId);
+                const res = await fetch("http://localhost:8000/delete-appointment", {
+                    method: "POST",
+                    body: formData
+                });
+                if (res.ok) {
+                    const updated = await fetch("http://localhost:8000/appointment");
+                    setAppointments(await updated.json());
+                }
+                setRemoveModal({ show: false, apptId: null, anchorRect: null });
+            }}>Yes</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setRemoveModal({ show: false, apptId: null, anchorRect: null })}>No</button>
+        </div>
+    </div>
+)}
+{removeModal.show && (
+    <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 1999,
+        background: 'transparent',
+    }}
+    onClick={() => setRemoveModal({ show: false, apptId: null, anchorRect: null })}
+    />
 )}
     </div>
 );
@@ -826,9 +917,11 @@ function CalendarModal({ appointments, doctor, onClose, navigate }) {
     function typeLabel(type) {
         return {
             routine: 'Routine Eye Exam',
+            glasses: 'Glasses Fitting',
             contacts: 'Contact Lens Fitting',
-            postsurgery: 'Post-Operative Check',
-            special: 'Special',
+            surgery: 'Surgery Consultation',
+            postsurgery: 'Post-Operative Consultation',
+            special: 'Special Examination',
         }[type] || type;
     }
 

@@ -54,8 +54,23 @@ def summarize(text: str, appointment_type: str, bullets: str) -> str:
             "Purpose of visit, type of surgery, recovery progress, current symptoms, visual acuity, complications, next steps."
             "Always use numbers instead of words for numbers (eg. -1 instead of minus one)"
         ),
+        "glasses": (
+            "Summarize the following eye doctor appointment about a glasses fitting. Use the following bullet points: "
+            "Purpose of visit, visual acuity, frame selection, lens options, fitting adjustments, patient comfort, care instructions, follow-up needs. "
+            "Always use numbers instead of words for numbers (eg. -1 instead of minus one)"
+        ),
+        "surgery": (
+            "Summarize the following eye doctor appointment about an operation. Use the following bullet points: "
+            "Type of operation, purpose of operation, medical history, past surgeries, anesthesia preference, follow-up plan, additional notes. "
+            "Always use numbers instead of words for numbers (eg. -1 instead of minus one)"
+        ),
         "special": (
             f"Summarize the following eye doctor appointment. Use the following bullet points: {bullet_str}. "
+            "Always use numbers instead of words for numbers (eg. -1 instead of minus one)"
+        ),
+        "emergency": (
+            "Summarize the following eye doctor appointment about an emergency visit. Use the following bullet points: "+
+            "Reason for emergency, symptoms, time of onset, prior treatments, visual acuity, urgent findings, immediate actions, follow-up plan. "+
             "Always use numbers instead of words for numbers (eg. -1 instead of minus one)"
         )
     }

@@ -2,6 +2,16 @@ import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import WaveSurfer from "wavesurfer.js";
 
+const appointmentTypeOptions = [
+    { value: "routine", label: "Routine Eye Exam" },
+    { value: "glasses", label: "Glasses Fitting" },
+    { value: "contacts", label: "Contact Lens Fitting" },
+    { value: "surgery", label: "Surgery Consultation" },
+    { value: "postsurgery", label: "Post-surgery Consultation" },
+    { value: "emergency", label: "Emergency Visit" },
+    { value: "special", label: "Special Examination" },
+];
+
 export default function Appointment() {
     const { id } = useParams();
     const location = useLocation();
@@ -295,10 +305,9 @@ export default function Appointment() {
                             });
                         }}
                     >
-                        <option value="routine">Routine Eye Exam</option>
-                        <option value="contacts">Contact Lens Fitting</option>
-                        <option value="postsurgery">Post-Operative Check</option>
-                        <option value="special">Special</option>
+                        {appointmentTypeOptions.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                     </select>
                 </div>
             </div>
@@ -328,6 +337,10 @@ export default function Appointment() {
                             const mins = Math.floor(seconds / 60);
                             const secs = Math.floor(seconds % 60);
                             const timestamp = `[${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}]`;
+                            let text = segment.text;
+                            if (text && text.length > 0) {
+                                text = text.charAt(0).toUpperCase() + text.slice(1);
+                            }
                             return (
                                 <div key={index} style={{ display: 'flex', alignItems: 'center', paddingBottom: '20px' }}>
                                     <button
@@ -345,7 +358,7 @@ export default function Appointment() {
                                         <span className="material-icons" style={{ fontSize: 20, verticalAlign: 'middle' }}>skip_next</span>
                                     </button>
                                     <span>
-                                        <strong>{timestamp}</strong> {segment.text}
+                                        <strong>{timestamp}</strong> {text}
                                     </span>
                                 </div>
                             );
