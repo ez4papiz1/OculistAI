@@ -303,3 +303,43 @@ def delete_appointment(
     db.commit()
     return {"status": "success"}
 
+@app.post("/edit-doctor")
+def edit_doctor(
+    doctor_id: int = Form(...),
+    firstname: str = Form(...),
+    lastname: str = Form(...),
+    email: str = Form(...),
+    db: Session = Depends(database.get_db)
+):
+    doctor = db.query(models.Doctor).filter(models.Doctor.id == doctor_id).first()
+    if email and email != doctor.email:
+        existing = db.query(models.Doctor).filter(models.Doctor.email == email).first()
+        if existing:
+            raise HTTPException(status_code=401, detail="exists")
+    doctor.firstname = firstname
+    doctor.lastname = lastname
+    doctor.email = email
+    db.commit()
+    db.refresh(doctor)
+    return {"message": "Doctor updated successfully"}
+
+@app.post("/edit-patient")
+def edit_patient(
+    patient_id: int = Form(...),
+    firstname: str = Form(...),
+    lastname: str = Form(...),
+    birth_date: str = Form(...),
+    notes: str = Form(""),
+    db: Session = Depends(database.get_db)
+):
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    patient.firstname = firstname
+    patient.lastname = lastname
+    patient.birth_date = birth_date
+    patient.notes = notes
+    db.commit()
+    db.refresh(patient)
+    return {"message": "Patient updated successfully"}
+

@@ -21,11 +21,15 @@ services:
     build:
       context: frontend
     ports:
-      - "4173:4173"
+      - "5173:5173"
     networks:
       - public
     depends_on:
       - backend
+    volumes:
+      - ./frontend:/code
+      - /code/node_modules
+    command: npm run dev -- --host
 
   db:
     image: mariadb:10.6.4-focal

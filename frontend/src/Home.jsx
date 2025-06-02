@@ -67,6 +67,14 @@ const [editAppData, setEditAppData] = useState(null);
 const [doctorError, setDoctorError] = useState("");
 const [patientError, setPatientError] = useState("");
 const [removeModal, setRemoveModal] = useState({ show: false, apptId: null, anchorRect: null });
+const [showDoctorsModal, setShowDoctorsModal] = useState(false);
+const [showPatientsModal, setShowPatientsModal] = useState(false);
+const [showEditDoctorModal, setShowEditDoctorModal] = useState(false);
+const [showEditPatientModal, setShowEditPatientModal] = useState(false);
+const [editDoctorForm, setEditDoctorForm] = useState({ doctor_id: '', firstname: '', lastname: '', email: '' });
+const [editPatientForm, setEditPatientForm] = useState({ patient_id: '', firstname: '', lastname: '', birth_date: '', notes: '' });
+const [editDoctorError, setEditDoctorError] = useState('');
+const [editPatientError, setEditPatientError] = useState('');
 
 useEffect(() => {
     const fetchAppointments = async () => {
@@ -185,7 +193,6 @@ const handlePatientSubmit = async (e) => {
         setPatientError("Fill out all required fields.");
         return;
     }
-    // Check if birth_date is in the future
     const today = new Date();
     const birthDate = new Date(newPatient.birth_date);
     if (birthDate > today) {
@@ -255,11 +262,11 @@ return (
                 <button className="btn btn-primary w-75" onClick={() => setShowAppModal(true)}>
                     Add Appointment
                 </button>
-                <button className="btn btn-secondary w-75" onClick={() => setShowPatientModal(true)}>
-                    Add Patient
+                <button className="btn btn-secondary w-75" onClick={() => setShowPatientsModal(true)}>
+                    Patients
                 </button>
-                <button className="btn btn-info w-75" onClick={() => setShowDoctorModal(true)}>
-                    Add Doctor
+                <button className="btn btn-info w-75" onClick={() => setShowDoctorsModal(true)}>
+                    Doctors
                 </button>
                 <button className="btn btn-outline-dark w-25 d-flex align-items-center justify-content-center" onClick={() => setShowCalendarModal(true)}>
                     <span className="material-icons" style={{ verticalAlign: 'middle', fontSize: '1.5rem' }}>calendar_month</span>
@@ -555,7 +562,7 @@ return (
                     <button className="btn btn-outline-primary" onClick={openChangeEmailModal}>Change Email</button>
                     <button className="btn btn-outline-primary" onClick={() => { setShowChangePasswordModal(true); setShowSettingsModal(false); }}>Change Password</button>
                     <button className="btn btn-danger mt-2" onClick={() => {navigate("/login", { replace: true }); }}>Logout</button>
-                    <button className="btn btn-secondary mt-2" onClick={() => setShowSettingsModal(false)}>Close</button>
+                    <button className="btn btn-danger mt-2" onClick={() => setShowSettingsModal(false)}>Close</button>
                 </div>
             </div>
         </div>
@@ -625,8 +632,10 @@ return (
                         setDoctor({ ...doctor, email: emailField });
                         setShowChangeEmailModal(false);
                         setShowSettingsModal(true);
+                    } else if (err.detail === "exists") {
+                        setDoctorError("Doctor with this email already exists.");
                     } else {
-                        alert("Failed to update email");
+                        alert("Failed to update doctor.");
                     }
                 }}>
                     <div className="mb-3">
@@ -839,6 +848,186 @@ return (
     onClick={() => setRemoveModal({ show: false, apptId: null, anchorRect: null })}
     />
 )}
+
+{showDoctorsModal && (
+    <div className="modal d-block" tabIndex="-1" role="dialog">
+        <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content p-4">
+                <h2 className="mb-3">Doctors</h2>
+                <div className="d-flex flex-column gap-3">
+                    <button className="btn btn-outline-primary" onClick={() => { setShowDoctorModal(true); setShowDoctorsModal(false); }}>Add Doctor</button>
+                    <button className="btn btn-outline-secondary" onClick={() => { setShowEditDoctorModal(true); setShowDoctorsModal(false); }}>Edit Doctor</button>
+                    <button className="btn btn-danger mt-2" onClick={() => setShowDoctorsModal(false)}>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+)}
+
+{showEditDoctorModal && (
+    <div className="modal d-block" tabIndex="-1" role="dialog">
+        <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content p-4">
+                <h2 className="mb-3">Edit Doctor</h2>
+                <form onSubmit={async e => {
+                    e.preventDefault();
+                    setEditDoctorError("");
+                    if (!editDoctorForm.doctor_id || !editDoctorForm.firstname || !editDoctorForm.lastname || !editDoctorForm.email) {
+                        setEditDoctorError("Fill out all required fields.");
+                        return;
+                    }
+                    const formData = new FormData();
+                    formData.append("doctor_id", editDoctorForm.doctor_id);
+                    formData.append("firstname", editDoctorForm.firstname);
+                    formData.append("lastname", editDoctorForm.lastname);
+                    formData.append("email", editDoctorForm.email);
+                    const res = await fetch("http://localhost:8000/edit-doctor", {
+                        method: "POST",
+                        body: formData
+                    });
+                    if (res.ok) {
+                        setShowEditDoctorModal(false);
+                        const updated = await fetch("http://localhost:8000/doctors");
+                        setDoctors(await updated.json());
+                    } else {
+                        setEditDoctorError("Failed to update doctor.");
+                    }
+                }}>
+                    <div className="mb-3">
+                        <label className="form-label">Select Doctor</label>
+                        <select className="form-select" required value={editDoctorForm.doctor_id} onChange={e => {
+                            const doc = doctors.find(d => String(d.id) === e.target.value);
+                            setEditDoctorForm({
+                                doctor_id: e.target.value,
+                                firstname: doc ? doc.firstname : '',
+                                lastname: doc ? doc.lastname : '',
+                                email: doc ? doc.email : ''
+                            });
+                        }}>
+                            <option value="">-- Select Doctor --</option>
+                            {doctors.map(doc => (
+                                <option key={doc.id} value={doc.id}>{doc.firstname} {doc.lastname}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">First Name</label>
+                        <input className="form-control" required type="text" value={editDoctorForm.firstname} onChange={e => setEditDoctorForm({ ...editDoctorForm, firstname: e.target.value })} />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Last Name</label>
+                        <input className="form-control" required type="text" value={editDoctorForm.lastname} onChange={e => setEditDoctorForm({ ...editDoctorForm, lastname: e.target.value })} />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Email</label>
+                        <input className="form-control" required type="email" value={editDoctorForm.email} onChange={e => setEditDoctorForm({ ...editDoctorForm, email: e.target.value })} />
+                    </div>
+                    {editDoctorError && <div className="alert alert-danger py-1">{editDoctorError}</div>}
+                    <div className="d-flex justify-content-end gap-2 mt-3">
+                        <button className="btn btn-success" type="submit">Save</button>
+                        <button className="btn btn-secondary" type="button" onClick={() => setShowEditDoctorModal(false)}>Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+)}
+
+{showPatientsModal && (
+    <div className="modal d-block" tabIndex="-1" role="dialog">
+        <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content p-4">
+                <h2 className="mb-3">Patients</h2>
+                <div className="d-flex flex-column gap-3">
+                    <button className="btn btn-outline-primary" onClick={() => { setShowPatientModal(true); setShowPatientsModal(false); }}>Add Patient</button>
+                    <button className="btn btn-outline-secondary" onClick={() => { setShowEditPatientModal(true); setShowPatientsModal(false); }}>Edit Patient</button>
+                    <button className="btn btn-danger mt-2" onClick={() => setShowPatientsModal(false)}>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+)}
+
+{showEditPatientModal && (
+    <div className="modal d-block" tabIndex="-1" role="dialog">
+        <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content p-4">
+                <h2 className="mb-3">Edit Patient</h2>
+                <form onSubmit={async e => {
+                    e.preventDefault();
+                    setEditPatientError("");
+                    if (!editPatientForm.patient_id || !editPatientForm.firstname || !editPatientForm.lastname || !editPatientForm.birth_date) {
+                        setEditPatientError("Fill out all required fields.");
+                        return;
+                    }
+                    const today = new Date();
+                    const birthDate = new Date(editPatientForm.birth_date);
+                    if (birthDate > today) {
+                        setPatientError("Please select correct date of birth.");
+                        return;
+                    }
+                    const formData = new FormData();
+                    formData.append("patient_id", editPatientForm.patient_id);
+                    formData.append("firstname", editPatientForm.firstname);
+                    formData.append("lastname", editPatientForm.lastname);
+                    formData.append("birth_date", editPatientForm.birth_date);
+                    formData.append("notes", editPatientForm.notes);
+                    const res = await fetch("http://localhost:8000/edit-patient", {
+                        method: "POST",
+                        body: formData
+                    });
+                    if (res.ok) {
+                        setShowEditPatientModal(false);
+                        const updated = await fetch("http://localhost:8000/patients");
+                        setPatients(await updated.json());
+                    } else {
+                        setEditPatientError("Failed to update patient.");
+                    }
+                }}>
+                    <div className="mb-3">
+                        <label className="form-label">Select Patient</label>
+                        <select className="form-select" required value={editPatientForm.patient_id} onChange={e => {
+                            const pat = patients.find(p => String(p.id) === e.target.value);
+                            setEditPatientForm({
+                                patient_id: e.target.value,
+                                firstname: pat ? pat.firstname : '',
+                                lastname: pat ? pat.lastname : '',
+                                birth_date: pat ? pat.birth_date : '',
+                                notes: pat ? pat.notes : ''
+                            });
+                        }}>
+                            <option value="">-- Select Patient --</option>
+                            {patients.map(pat => (
+                                <option key={pat.id} value={pat.id}>{pat.firstname} {pat.lastname}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">First Name</label>
+                        <input className="form-control" required type="text" value={editPatientForm.firstname} onChange={e => setEditPatientForm({ ...editPatientForm, firstname: e.target.value })} />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Last Name</label>
+                        <input className="form-control" required type="text" value={editPatientForm.lastname} onChange={e => setEditPatientForm({ ...editPatientForm, lastname: e.target.value })} />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Birth Date</label>
+                        <input className="form-control" required type="date" value={editPatientForm.birth_date} onChange={e => setEditPatientForm({ ...editPatientForm, birth_date: e.target.value })} />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Notes</label>
+                        <textarea className="form-control" value={editPatientForm.notes} onChange={e => setEditPatientForm({ ...editPatientForm, notes: e.target.value })} />
+                    </div>
+                    {editPatientError && <div className="alert alert-danger py-1">{editPatientError}</div>}
+                    <div className="d-flex justify-content-end gap-2 mt-3">
+                        <button className="btn btn-success" type="submit">Save</button>
+                        <button className="btn btn-secondary" type="button" onClick={() => setShowEditPatientModal(false)}>Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+)}
     </div>
 );
 }
@@ -973,21 +1162,29 @@ function CalendarModal({ appointments, doctor, onClose, navigate }) {
                                     <div className="text-muted mt-4">No appointments</div>
                                 ) : (
                                     filteredAppointments.map(appt => (
-                                        <div key={appt.id} className={`card p-2 mb-3 shadow-sm ${cardColor(appt.status)}`}> 
-                                            <div className="fw-bold">#{appt.id} {appt.doctor_name} / {appt.patient_name}</div>
-                                            <div>{typeLabel(appt.type)}</div>
+                                        <div key={appt.id} className={`card p-2 mb-3 shadow-sm ${cardColor(appt.status)}`}>
+                                            <div className="fw-bold">Appointment #{appt.id}</div>
+                                            <div>Patient: {appt.patient_name}</div>
+                                            <div>Doctor: {appt.doctor_name}</div>
+                                            <div>Type: {typeLabel(appt.type)}</div>
+                                            <div>Date: {new Date(appt.appointment_time).toLocaleString([], {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}</div>
                                             <div className="d-flex justify-content-between align-items-center mt-1">
-                                                <span style={{ fontSize: '0.85em' }}>
-                                                    {new Date(appt.appointment_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                                <button className="btn btn-light btn-sm ms-2" onClick={() => { onClose(); navigate(`/appointment/${appt.id}`, { state: { doctor } }); }}>Open</button>
+                                                <span></span>
+                                                <button
+                                                    className="btn btn-light btn-sm ms-2"
+                                                    onClick={() => { onClose(); navigate(`/appointment/${appt.id}`, { state: { doctor } }); }}
+                                                >
+                                                    Open
+                                                </button>
                                             </div>
                                         </div>
                                     ))
                                 )}
                             </div>
                         </div>
-                        {/* Calendar grid */}
                         <div className="col-md-8 p-4">
                             <div className="d-flex justify-content-between align-items-center mb-3">
                                 <button className="btn btn-outline-dark" onClick={() => {
@@ -1057,7 +1254,7 @@ function CalendarModal({ appointments, doctor, onClose, navigate }) {
                                 }}>
                                     <span className="material-icons align-middle me-1">today</span>Today
                                 </button>
-                                <button className="btn btn-secondary" onClick={onClose}>Close</button>
+                                <button className="btn btn-danger" onClick={onClose}>Close</button>
                             </div>
                         </div>
                     </div>
