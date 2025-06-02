@@ -34,10 +34,15 @@ const [newDoctor, setNewDoctor] = useState({
     lastname: "",
     email: ""
 });
-const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+const [sortConfig, setSortConfig] = useState({ key: 'id', direction: 'asc' });
 const [nameFields, setNameFields] = useState({ firstname: '', lastname: '' });
 const [emailField, setEmailField] = useState('');
 const [passwordFields, setPasswordFields] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+const [showCalendarModal, setShowCalendarModal] = useState(false);
+const [showEditAppModal, setShowEditAppModal] = useState(false);
+const [editAppData, setEditAppData] = useState(null);
+const [doctorError, setDoctorError] = useState("");
+const [patientError, setPatientError] = useState("");
 
 useEffect(() => {
     const fetchAppointments = async () => {
@@ -73,17 +78,32 @@ useEffect(() => {
 const sortedAppointments = React.useMemo(() => {
     let sortable = [...appointments];
     if (sortConfig.key) {
-        sortable.sort((a, b) => {
-            let aVal = a[sortConfig.key];
-            let bVal = b[sortConfig.key];
-            if (sortConfig.key === 'appointment_time') {
-                aVal = new Date(aVal);
-                bVal = new Date(bVal);
-            }
-            if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
+        if (
+            sortConfig.key === 'doctor_name' ||
+            sortConfig.key === 'patient_name' ||
+            sortConfig.key === 'status' ||
+            sortConfig.key === 'type'
+        ) {
+            sortable.sort((a, b) => {
+                const aVal = (a[sortConfig.key] || '').toLowerCase();
+                const bVal = (b[sortConfig.key] || '').toLowerCase();
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        } else {
+            sortable.sort((a, b) => {
+                let aVal = a[sortConfig.key];
+                let bVal = b[sortConfig.key];
+                if (sortConfig.key === 'appointment_time') {
+                    aVal = new Date(aVal);
+                    bVal = new Date(bVal);
+                }
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
     }
     return sortable;
 }, [appointments, sortConfig]);
@@ -93,7 +113,7 @@ const handleSort = (key) => {
         if (prev.key === key) {
             return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
         }
-        return { key, direction: 'desc' };
+        return { key, direction: 'asc' };
     });
 };
 
@@ -135,33 +155,40 @@ if (res.ok) {
 };
 
 const handlePatientSubmit = async (e) => {
-e.preventDefault();
+    e.preventDefault();
+    setPatientError("");
+    if (!newPatient.firstname || !newPatient.lastname || !newPatient.birth_date) {
+        setPatientError("Fill out all required fields.");
+        return;
+    }
+    // Check if birth_date is in the future
+    const today = new Date();
+    const birthDate = new Date(newPatient.birth_date);
+    if (birthDate > today) {
+        setPatientError("Please select correct date of birth.");
+        return;
+    }
 
-if (!newPatient.firstname || !newPatient.lastname || !newPatient.birth_date) {
-    alert("Fill out all required fields.");
-    return;
-}
+    const formData = new FormData();
+    formData.append("firstname", newPatient.firstname);
+    formData.append("lastname", newPatient.lastname);
+    formData.append("birth_date", newPatient.birth_date);
+    formData.append("notes", newPatient.notes);
 
-const formData = new FormData();
-formData.append("firstname", newPatient.firstname);
-formData.append("lastname", newPatient.lastname);
-formData.append("birth_date", newPatient.birth_date);
-formData.append("notes", newPatient.notes);
+    const res = await fetch("http://localhost:8000/patients", {
+        method: "POST",
+        body: formData
+    });
 
-const res = await fetch("http://localhost:8000/patients", {
-    method: "POST",
-    body: formData
-});
-
-if (res.ok) {
-    setShowPatientModal(false);
-    setNewPatient({ firstname: "", lastname: "", birth_date: "", notes: "" });
-
-    const updated = await fetch("http://localhost:8000/patients");
-    setPatients(await updated.json());
-} else {
-    alert("Failed to create patient.");
-}
+    if (res.ok) {
+        setShowPatientModal(false);
+        setNewPatient({ firstname: "", lastname: "", birth_date: "", notes: "" });
+        setPatientError("");
+        const updated = await fetch("http://localhost:8000/patients");
+        setPatients(await updated.json());
+    } else {
+        setPatientError("Failed to create patient.");
+    }
 };
 
 const openChangeNameModal = () => {
@@ -175,6 +202,24 @@ const openChangeEmailModal = () => {
     setShowSettingsModal(false);
 };
 
+useEffect(() => {
+    function handleEsc(e) {
+        if (e.key === 'Escape') {
+            if (showAppModal) setShowAppModal(false);
+            if (showPatientModal) setShowPatientModal(false);
+            if (showDoctorModal) setShowDoctorModal(false);
+            if (showSettingsModal) setShowSettingsModal(false);
+            if (showChangeNameModal) setShowChangeNameModal(false);
+            if (showChangeEmailModal) setShowChangeEmailModal(false);
+            if (showChangePasswordModal) setShowChangePasswordModal(false);
+            if (showCalendarModal) setShowCalendarModal(false);
+            if (showEditAppModal) { setShowEditAppModal(false); setEditAppData(null); }
+        }
+    }
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+}, [showAppModal, showPatientModal, showDoctorModal, showSettingsModal, showChangeNameModal, showChangeEmailModal, showChangePasswordModal, showCalendarModal, showEditAppModal]);
+
 if (!checkedAuth) return null;
 
 return (
@@ -183,14 +228,17 @@ return (
 
         <div className="d-flex row mb-4 g-2 justify-content-between align-items-center">
             <div className="d-flex gap-2" style={{ maxWidth: '600px' }}>
-                <button className="btn btn-primary w-50" onClick={() => setShowAppModal(true)}>
+                <button className="btn btn-primary w-75" onClick={() => setShowAppModal(true)}>
                     Add Appointment
                 </button>
-                <button className="btn btn-secondary w-50" onClick={() => setShowPatientModal(true)}>
+                <button className="btn btn-secondary w-75" onClick={() => setShowPatientModal(true)}>
                     Add Patient
                 </button>
-                <button className="btn btn-info w-50" onClick={() => setShowDoctorModal(true)}>
+                <button className="btn btn-info w-75" onClick={() => setShowDoctorModal(true)}>
                     Add Doctor
+                </button>
+                <button className="btn btn-outline-dark w-25 d-flex align-items-center justify-content-center" onClick={() => setShowCalendarModal(true)}>
+                    <span className="material-icons" style={{ verticalAlign: 'middle', fontSize: '1.5rem' }}>calendar_month</span>
                 </button>
             </div>
             <div className="d-flex justify-content-end" style={{ width: "10%" }}>
@@ -204,7 +252,7 @@ return (
             <table className="table table-bordered table-striped w-100">
             <thead>
                 <tr>
-                <th>
+                <th style={{ width: '170px' }}>
                     Appointment #
                     <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('id')}>
                         <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
@@ -240,7 +288,7 @@ return (
                         <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
                     </button>
                 </th>
-                <th>Action</th>
+                <th style={{ width: '120px' }}>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -259,7 +307,26 @@ return (
                     <td>{appt.doctor_name}</td>
                     <td>{appt.patient_name}</td>
                     <td>
-                    <button className="btn btn-outline-primary btn-sm" onClick={() => navigate(`/appointment/${appt.id}`, {state: { doctor } })}>Open</button>
+                    <button className="btn btn-outline-primary btn-sm me-1" onClick={() => navigate(`/appointment/${appt.id}`, {state: { doctor } })}>Open</button>
+                    <button className="btn btn-outline-secondary btn-sm" onClick={() => {
+
+                        let doctorId = appt.doctor_id;
+                        let patientId = appt.patient_id;
+                        if (!doctorId && appt.doctor_name) {
+                            const foundDoc = doctors.find(doc => `${doc.firstname} ${doc.lastname}` === appt.doctor_name);
+                            if (foundDoc) doctorId = foundDoc.id;
+                        }
+                        if (!patientId && appt.patient_name) {
+                            const foundPat = patients.find(pat => `${pat.firstname} ${pat.lastname}` === appt.patient_name);
+                            if (foundPat) patientId = foundPat.id;
+                        }
+                        setEditAppData({
+                            ...appt,
+                            doctor_id: doctorId || "",
+                            patient_id: patientId || ""
+                        });
+                        setShowEditAppModal(true);
+                    }}>Edit</button>
                     </td>
                 </tr>
                 ))}
@@ -360,6 +427,7 @@ return (
                     value={newPatient.notes}
                     onChange={(e) => setNewPatient({ ...newPatient, notes: e.target.value })} />
                 </div>
+                {patientError && <div className="alert alert-danger py-1">{patientError}</div>}
                 <div className="d-flex justify-content-end gap-2 mt-3">
                     <button className="btn btn-success" type="submit">Create</button>
                     <button className="btn btn-secondary" type="button" onClick={() => setShowPatientModal(false)}>Cancel</button>
@@ -377,6 +445,7 @@ return (
                 <h2 className="mb-3">Add Doctor</h2>
                 <form onSubmit={async (e) => {
                     e.preventDefault();
+                    setDoctorError("");
                     if (!newDoctor.firstname || !newDoctor.lastname || !newDoctor.email || !newDoctor.password) {
                         alert("Fill out all required fields.");
                         return;
@@ -396,7 +465,12 @@ return (
                         const updated = await fetch("http://localhost:8000/doctors");
                         setDoctors(await updated.json());
                     } else {
-                        alert("Failed to create doctor.");
+                        const err = await res.json();
+                        if (err.detail === "exists") {
+                            setDoctorError("Doctor with this email already exists.");
+                        } else {
+                            alert("Failed to create doctor.");
+                        }
                     }
                 }}>
                 <div className="mb-3">
@@ -423,6 +497,7 @@ return (
                         value={newDoctor.password}
                         onChange={(e) => setNewDoctor({ ...newDoctor, password: e.target.value })} />
                 </div>
+                {doctorError && <div className="alert alert-danger py-1">{doctorError}</div>}
                 <div className="d-flex justify-content-end gap-2 mt-3">
                     <button className="btn btn-success" type="submit">Create</button>
                     <button className="btn btn-secondary" type="button" onClick={() => setShowDoctorModal(false)}>Cancel</button>
@@ -581,6 +656,320 @@ return (
         </div>
     </div>
 )}
+
+{showCalendarModal && (
+    <CalendarModal
+        appointments={appointments}
+        doctor={doctor}
+        onClose={() => setShowCalendarModal(false)}
+        navigate={navigate}
+    />
+)}
+
+{showEditAppModal && editAppData && (
+    <div className="modal d-block" tabIndex="-1" role="dialog">
+        <div className="modal-dialog modal-dialog-centered" role="document">
+        <div className="modal-content p-4">
+            <h2 className="mb-3">Edit Appointment</h2>
+            <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (!editAppData.doctor_id || !editAppData.patient_id || !editAppData.appointment_time || !editAppData.type) {
+                    alert("Fill out all required fields.");
+                    return;
+                }
+                const formData = new FormData();
+                formData.append("appointment_id", editAppData.id);
+                formData.append("doctor_id", editAppData.doctor_id);
+                formData.append("patient_id", editAppData.patient_id);
+                formData.append("appointment_time", editAppData.appointment_time);
+                formData.append("type", editAppData.type);
+                formData.append("notes", editAppData.notes || "");
+                const res = await fetch("http://localhost:8000/update-appointment", {
+                    method: "POST",
+                    body: formData
+                });
+                if (res.ok) {
+                    setShowEditAppModal(false);
+                    setEditAppData(null);
+                    const updated = await fetch("http://localhost:8000/appointment");
+                    setAppointments(await updated.json());
+                } else {
+                    alert("Failed to update appointment");
+                }
+            }}>
+            <div className="mb-3">
+                <label className="form-label">Doctor</label>
+                <select className="form-select" required value={editAppData.doctor_id}
+                    onChange={e => setEditAppData({ ...editAppData, doctor_id: e.target.value })}>
+                    <option value="">-- Select Doctor --</option>
+                    {doctors.map((doc) => (
+                        <option key={doc.id} value={doc.id}>{doc.firstname} {doc.lastname}</option>
+                    ))}
+                </select>
+            </div>
+            <div className="mb-3">
+                <label className="form-label">Patient</label>
+                <select className="form-select" required value={editAppData.patient_id}
+                    onChange={e => setEditAppData({ ...editAppData, patient_id: e.target.value })}>
+                    <option value="">-- Select Patient --</option>
+                    {patients.map((pat) => (
+                        <option key={pat.id} value={pat.id}>{pat.firstname} {pat.lastname}</option>
+                    ))}
+                </select>
+            </div>
+            <div className="mb-3">
+                <label className="form-label">Visit Type</label>
+                <select className="form-select" value={editAppData.type}
+                    onChange={e => setEditAppData({ ...editAppData, type: e.target.value })}>
+                    <option value="routine">Routine Eye Exam</option>
+                    <option value="contacts">Contact Lens Fitting</option>
+                    <option value="postsurgery">Post-Operative Check</option>
+                    <option value="special">Special</option>
+                </select>
+            </div>
+            <div className="mb-3">
+                <label className="form-label">Date & Time</label>
+                <input className="form-control" type="datetime-local" required
+                    value={editAppData.appointment_time}
+                    onChange={e => setEditAppData({ ...editAppData, appointment_time: e.target.value })} />
+            </div>
+            <div className="mb-3">
+                <label className="form-label">Notes</label>
+                <textarea className="form-control"
+                    value={editAppData.notes || ""}
+                    onChange={e => setEditAppData({ ...editAppData, notes: e.target.value })} />
+            </div>
+            <div className="d-flex justify-content-end gap-2 mt-3">
+                <button className="btn btn-success" type="submit">Save</button>
+                <button className="btn btn-secondary" type="button" onClick={() => { setShowEditAppModal(false); setEditAppData(null); }}>Cancel</button>
+            </div>
+            </form>
+        </div>
+        </div>
+    </div>
+)}
     </div>
 );
+}
+
+function CalendarModal({ appointments, doctor, onClose, navigate }) {
+    const today = new Date();
+    const [currentMonth, setCurrentMonth] = useState(() => {
+        return new Date(today.getFullYear(), today.getMonth(), 1);
+    });
+    const [selectedDate, setSelectedDate] = useState(() => {
+        return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    });
+    const [doctorFilter, setDoctorFilter] = useState('');
+    const [patientFilter, setPatientFilter] = useState('');
+    const [typeFilter, setTypeFilter] = useState('');
+
+    const monthAppointments = appointments.filter(appt => {
+        const apptDate = new Date(appt.appointment_time);
+        return (
+            apptDate.getFullYear() === currentMonth.getFullYear() &&
+            apptDate.getMonth() === currentMonth.getMonth()
+        );
+    });
+
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+    const firstDayOfWeek = firstDayOfMonth.getDay();
+    const daysInMonth = lastDayOfMonth.getDate();
+    const weeks = [];
+    let day = 1 - firstDayOfWeek;
+    for (let w = 0; w < 6; w++) {
+        const week = [];
+        for (let d = 0; d < 7; d++, day++) {
+            if (day < 1 || day > daysInMonth) {
+                week.push(null);
+            } else {
+                week.push(new Date(year, month, day));
+            }
+        }
+        weeks.push(week);
+        if (day > daysInMonth) break;
+    }
+
+    function getDayAppointments(date) {
+        return monthAppointments.filter(appt => {
+            const apptDate = new Date(appt.appointment_time);
+            return (
+                apptDate.getFullYear() === date.getFullYear() &&
+                apptDate.getMonth() === date.getMonth() &&
+                apptDate.getDate() === date.getDate()
+            );
+        });
+    }
+
+    const dayAppointments = getDayAppointments(selectedDate);
+    const uniqueDoctors = Array.from(new Set(dayAppointments.map(a => a.doctor_name)));
+    const uniquePatients = Array.from(new Set(dayAppointments.map(a => a.patient_name)));
+    const uniqueTypes = Array.from(new Set(dayAppointments.map(a => a.type)));
+
+    const filteredAppointments = dayAppointments.filter(appt => {
+        return (
+            (!doctorFilter || appt.doctor_name === doctorFilter) &&
+            (!patientFilter || appt.patient_name === patientFilter) &&
+            (!typeFilter || appt.type === typeFilter)
+        );
+    }).sort((a, b) => new Date(a.appointment_time) - new Date(b.appointment_time));
+
+    function cardColor(status) {
+        if (status === 'completed') return 'bg-success text-white';
+        if (status === 'canceled') return 'bg-danger text-white';
+        return 'bg-secondary text-white';
+    }
+
+    function typeLabel(type) {
+        return {
+            routine: 'Routine Eye Exam',
+            contacts: 'Contact Lens Fitting',
+            postsurgery: 'Post-Operative Check',
+            special: 'Special',
+        }[type] || type;
+    }
+
+    function statusLabel(status) {
+        return {
+            scheduled: 'Scheduled',
+            completed: 'Completed',
+            canceled: 'Canceled',
+        }[status] || status;
+    }
+
+    const monthLabel = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const isSameDay = (d1, d2) => d1 && d2 && d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+
+    const selectedDayAppointments = getDayAppointments(selectedDate).sort((a, b) => new Date(a.appointment_time) - new Date(b.appointment_time));
+
+    return (
+        <div className="modal d-block" tabIndex="-1" role="dialog">
+            <div className="modal-dialog modal-dialog-centered modal-xl" role="document">
+                <div className="modal-content p-0" style={{ minHeight: 600 }}>
+                    <div className="row g-0">
+                        <div className="col-md-4 border-end bg-light p-4 d-flex flex-column" style={{ minHeight: 600 }}>
+                            <div className="d-flex align-items-center mb-3 gap-2">
+                                <span className="material-icons text-primary" style={{ fontSize: '2rem' }}>event</span>
+                                <h4 className="mb-0">{selectedDate ? selectedDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : ''}</h4>
+                            </div>
+                            <div className="mb-3">
+                                <select className="form-select mb-2" value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)}>
+                                    <option value="">All Doctors</option>
+                                    {uniqueDoctors.map(name => (
+                                        <option key={name} value={name}>{name}</option>
+                                    ))}
+                                </select>
+                                <select className="form-select mb-2" value={patientFilter} onChange={e => setPatientFilter(e.target.value)}>
+                                    <option value="">All Patients</option>
+                                    {uniquePatients.map(name => (
+                                        <option key={name} value={name}>{name}</option>
+                                    ))}
+                                </select>
+                                <select className="form-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                                    <option value="">All Types</option>
+                                    {uniqueTypes.map(type => (
+                                        <option key={type} value={type}>{typeLabel(type)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex-grow-1 overflow-auto" style={{ maxHeight: '50vh' }}>
+                                {filteredAppointments.length === 0 ? (
+                                    <div className="text-muted mt-4">No appointments</div>
+                                ) : (
+                                    filteredAppointments.map(appt => (
+                                        <div key={appt.id} className={`card p-2 mb-3 shadow-sm ${cardColor(appt.status)}`}> 
+                                            <div className="fw-bold">#{appt.id} {appt.doctor_name} / {appt.patient_name}</div>
+                                            <div>{typeLabel(appt.type)}</div>
+                                            <div className="d-flex justify-content-between align-items-center mt-1">
+                                                <span style={{ fontSize: '0.85em' }}>
+                                                    {new Date(appt.appointment_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                                <button className="btn btn-light btn-sm ms-2" onClick={() => { onClose(); navigate(`/appointment/${appt.id}`, { state: { doctor } }); }}>Open</button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                        {/* Calendar grid */}
+                        <div className="col-md-8 p-4">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                                <button className="btn btn-outline-dark" onClick={() => {
+                                    const prev = new Date(year, month - 1, 1);
+                                    setCurrentMonth(prev);
+                                    if (!isSameDay(selectedDate, prev) && (selectedDate.getMonth() !== prev.getMonth() || selectedDate.getFullYear() !== prev.getFullYear())) {
+                                        setSelectedDate(new Date(prev.getFullYear(), prev.getMonth(), 1));
+                                    }
+                                }}>
+                                    <span className="material-icons">chevron_left</span>
+                                </button>
+                                <h2 className="mb-0">{monthLabel}</h2>
+                                <button className="btn btn-outline-dark" onClick={() => {
+                                    const next = new Date(year, month + 1, 1);
+                                    setCurrentMonth(next);
+                                    if (!isSameDay(selectedDate, next) && (selectedDate.getMonth() !== next.getMonth() || selectedDate.getFullYear() !== next.getFullYear())) {
+                                        setSelectedDate(new Date(next.getFullYear(), next.getMonth(), 1));
+                                    }
+                                }}>
+                                    <span className="material-icons">chevron_right</span>
+                                </button>
+                            </div>
+                            <div className="table-responsive">
+                                <table className="table table-bordered calendar-table mb-0">
+                                    <thead>
+                                        <tr className="text-center">
+                                            <th>Sun</th>
+                                            <th>Mon</th>
+                                            <th>Tue</th>
+                                            <th>Wed</th>
+                                            <th>Thu</th>
+                                            <th>Fri</th>
+                                            <th>Sat</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {weeks.map((week, wi) => (
+                                            <tr key={wi}>
+                                                {week.map((date, di) => {
+                                                    const isToday = date && isSameDay(date, today);
+                                                    const isSelected = date && isSameDay(date, selectedDate);
+                                                    const hasAppts = date && getDayAppointments(date).length > 0;
+                                                    return (
+                                                        <td key={di} style={{ verticalAlign: 'top', minWidth: 60, height: 60, background: date ? '#f8f9fa' : '#e9ecef', padding: 0 }}>
+                                                            {date && (
+                                                                <button
+                                                                    className={`btn w-100 h-100 d-flex flex-column align-items-center justify-content-center ${isSelected ? 'btn-primary text-white' : isToday ? 'btn-outline-primary' : 'btn-light'} ${hasAppts ? 'fw-bold' : ''}`}
+                                                                    style={{ borderRadius: 0, border: 'none', minHeight: 60, minWidth: 60, fontWeight: isSelected ? 700 : 400, boxShadow: isSelected ? '0 0 0 2px #0d6efd' : undefined }}
+                                                                    onClick={() => setSelectedDate(new Date(date.getFullYear(), date.getMonth(), date.getDate()))}
+                                                                >
+                                                                    <span style={{ fontSize: '1.2rem' }}>{date.getDate()}</span>
+                                                                    {hasAppts && <span className="material-icons text-warning" style={{ fontSize: '1.1rem' }}>event</span>}
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="d-flex justify-content-between mt-3">
+                                <button className="btn btn-outline-secondary" onClick={() => {
+                                    setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+                                    setSelectedDate(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+                                }}>
+                                    <span className="material-icons align-middle me-1">today</span>Today
+                                </button>
+                                <button className="btn btn-secondary" onClick={onClose}>Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }

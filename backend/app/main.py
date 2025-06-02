@@ -190,6 +190,11 @@ def create_doctor(
     password: str = Form(...),
     db: Session = Depends(database.get_db)
 ):
+    # Check if email already exists
+    if email:
+        existing = db.query(models.Doctor).filter(models.Doctor.email == email).first()
+        if existing:
+            raise HTTPException(status_code=401, detail="exists")
     new_doctor = models.Doctor(
         firstname=firstname,
         lastname=lastname,
@@ -255,4 +260,29 @@ def login(
     if not doctor or not utils.verify_password(password, doctor.hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return {"id": doctor.id, "email": doctor.email, "firstname": doctor.firstname, "lastname": doctor.lastname}
+
+@app.post("/update-appointment")
+def update_appointment(
+    appointment_id: int = Form(...),
+    doctor_id: int = Form(...),
+    patient_id: int = Form(...),
+    appointment_time: str = Form(...),
+    type: str = Form(...),
+    notes: str = Form(""),
+    db: Session = Depends(database.get_db)
+):
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    try:
+        appointment.appointment_time = datetime.fromisoformat(appointment_time)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid datetime format")
+    appointment.doctor_id = doctor_id
+    appointment.patient_id = patient_id
+    appointment.type = type
+    appointment.notes = notes
+    db.commit()
+    db.refresh(appointment)
+    return {"status": "success", "appointment_id": appointment.id}
 
