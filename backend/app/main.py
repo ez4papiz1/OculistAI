@@ -269,6 +269,7 @@ def update_appointment(
     appointment_time: str = Form(...),
     type: str = Form(...),
     notes: str = Form(""),
+    status: str = Form(...),
     db: Session = Depends(database.get_db)
 ):
     appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
@@ -282,6 +283,7 @@ def update_appointment(
     appointment.patient_id = patient_id
     appointment.type = type
     appointment.notes = notes
+    appointment.status = status
     db.commit()
     db.refresh(appointment)
     return {"status": "success", "appointment_id": appointment.id}

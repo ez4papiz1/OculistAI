@@ -49,6 +49,7 @@ export default function Appointment() {
     const waveformContainerRef = useRef(null);
     const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
     const [showSpeedSlider, setShowSpeedSlider] = useState(false);
+    const [date, setDate] = useState("");
 
     useEffect(() => {
         if (!doctor) {
@@ -70,6 +71,7 @@ export default function Appointment() {
             setDoctorName(appointment.doctor_name);
             setPatientName(appointment.patient_name);
             setNotes(appointment.notes || "");
+            setDate(appointment.appointment_time || "");
         };
 
         const fetchTranscription = async () => {
@@ -134,8 +136,8 @@ export default function Appointment() {
             const style = document.createElement('style');
             style.innerHTML = `
                 .waveform-container .wavesurfer-cursor {
-                    height: 30px !important;
-                    top: 15px !important;
+                    height: 15vh !important;
+                    top: 7vh !important;
                 }
             `;
             waveformContainerRef.current.classList.add('waveform-container');
@@ -241,7 +243,7 @@ export default function Appointment() {
     if (!checkedAuth) return null;
 
     return (
-    <div className="container-fluid" style={{ padding: "50px" }}>
+    <div className="container-fluid" style={{ padding: "3vh" }}>
         <div className="d-flex justify-content-between align-items-start mb-3">
             <button className="btn btn-outline-secondary" onClick={() => navigate("/home", { state: doctor })}>
             ← Back to Home
@@ -315,15 +317,98 @@ export default function Appointment() {
 
         <h1 className="mb-5">Oculist AI - Appointment #{id}</h1>
         <div className="d-flex align-items-start mb-5">
-            <button className={`btn ${recording ? "btn-danger" : "btn-success"}`} onClick={recording ? stopRecording : startRecording} >{recording ? "Stop Recording" : "Start Recording"}</button>
+            <button className={`btn ${recording ? "btn-danger" : "btn-success"}`} onClick={recording ? stopRecording : startRecording} >
+                <span className="material-icons align-middle me-1">fiber_manual_record</span>
+                {recording ? "Stop Recording" : "Start Recording"}
+            </button>
             {type === "special" && (
                 <button className="btn btn-outline-primary ms-2" onClick={() => setShowSummaryModal(true)} >Edit Summary</button>
             )}
+            {audioURL && transcript && summary && (
+                <>
+                    <button className="btn btn-outline-info ms-2" onClick={async () => {
+                        const audioBlob = await fetch(audioURL).then(r => r.blob());
+                        const arrayBuffer = await audioBlob.arrayBuffer();
+                        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                        const samples = audioBuffer.getChannelData(0);
+                        const sampleRate = audioBuffer.sampleRate;
+                        const mp3encoder = new window.lamejs.Mp3Encoder(1, sampleRate, 128);
+                        const chunkSize = 1152;
+                        let mp3Data = [];
+                        for (let i = 0; i < samples.length; i += chunkSize) {
+                            const sampleChunk = samples.subarray(i, i + chunkSize);
+                            const int16 = new Int16Array(sampleChunk.length);
+                            for (let j = 0; j < sampleChunk.length; j++) {
+                                int16[j] = Math.max(-32768, Math.min(32767, sampleChunk[j] * 32767));
+                            }
+                            const mp3buf = mp3encoder.encodeBuffer(int16);
+                            if (mp3buf.length > 0) mp3Data.push(new Uint8Array(mp3buf));
+                        }
+                        const mp3buf = mp3encoder.flush();
+                        if (mp3buf.length > 0) mp3Data.push(new Uint8Array(mp3buf));
+                        const mp3Blob = new Blob(mp3Data, { type: "audio/mp3" });
+                        const url = URL.createObjectURL(mp3Blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `appointment_${id}.mp3`;
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(() => {
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        }, 100);
+                    }}>
+                        <span className="material-icons align-middle me-1">download</span> Download Audio
+                    </button>
+                    <button className="btn btn-outline-secondary ms-2" onClick={async () => {
+                        const jsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : null;
+                        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+                        let y = 40;
+                        doc.setFontSize(24);
+                        doc.text(`Oculist AI Appointment #${id}`, 40, y);
+                        y += 60;
+                        doc.setFontSize(12);
+                        doc.text(`Doctor: ${doctorName}`, 40, y);
+                        y += 25;
+                        doc.text(`Patient: ${patientName}`, 40, y);
+                        y += 25;
+                        doc.text(`Type: ${appointmentTypeOptions.find(opt => opt.value === type)?.label || type}`, 40, y);
+                        y += 25;
+                        doc.text(`Date: ${date ? new Date(date).toLocaleString() : ''}`, 40, y);
+                        y += 50;
+                        doc.setFontSize(13);
+                        doc.text('Transcript', 40, y);
+                        doc.text('Summary', 300, y);
+                        y += 25;
+                        let transcriptText = Array.isArray(transcript)
+                            ? transcript.map(seg => {
+                                const seconds = seg.start;
+                                const mins = Math.floor(seconds / 60);
+                                const secs = Math.floor(seconds % 60);
+                                const timestamp = `[${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}]`;
+                                let text = seg.text;
+                                if (text && text.length > 0) {
+                                    text = text.charAt(0).toUpperCase() + text.slice(1);
+                                }
+                                return `${timestamp} ${text}`;
+                            }).join('\n\n')
+                            : transcript;
+                        let summaryText = typeof summary === 'string' ? summary : '';
+                        doc.setFontSize(11);
+                        doc.text(transcriptText, 40, y, { maxWidth: 230 });
+                        doc.text(summaryText, 300, y, { maxWidth: 230 });
+                        doc.save(`appointment_${id}.pdf`);
+                    }}>
+                        <span className="material-icons align-middle me-1">picture_as_pdf</span> Download PDF
+                    </button>
+                </>
+            )}
         </div>
         <div className="row mb-4">
-            <div className="col-md-6" style={{ height: "475px" }}>
+            <div className="col-md-6">
             <h3>Transcript</h3>
-            <div className="border p-3 overflow-auto" style={{ height: "450px" }}>
+            <div className="border p-3 overflow-auto" style={{ height: "70vh" }}>
                 {loadingTranscript ? (
                     <div className="d-flex justify-content-center align-items-center w-100 h-100">
                         <div className="spinner-border text-primary" role="status" style={{ height: "5rem", width: "5rem" }}>
@@ -342,7 +427,7 @@ export default function Appointment() {
                                 text = text.charAt(0).toUpperCase() + text.slice(1);
                             }
                             return (
-                                <div key={index} style={{ display: 'flex', alignItems: 'center', paddingBottom: '20px' }}>
+                                <div key={index} style={{ display: 'flex', alignItems: 'center', paddingBottom: '10vh' }}>
                                     <button
                                         className="btn btn-sm btn-link p-0 me-2"
                                         title={`Jump to ${timestamp}`}
@@ -369,9 +454,9 @@ export default function Appointment() {
                 )}
             </div>
             </div>
-            <div className="col-md-6" style={{ height: "475px" }}>
+            <div className="col-md-6">
             <h3>Summary</h3>
-            <div className="border p-3 overflow-auto" style={{ height: "450px" }}>
+            <div className="border p-3 overflow-auto" style={{ height: "70vh" }}>
                 {loadingSummary ? (
                     <div className="d-flex justify-content-center align-items-center w-100 h-100">
                         <div className="spinner-border text-primary" role="status" style={{ height: "5rem", width: "5rem" }}>
@@ -406,8 +491,8 @@ export default function Appointment() {
         </div>
         <div className="d-flex justify-content-between align-items-center mb-4">
         {audioURL && (
-            <div className="mb-4">
-                <div className="card shadow-sm p-3" style={{ width: '191%' }}>
+            <div className="mb-4" style={{ width: "49%" }}>
+                <div className="card shadow-sm p-3">
                     <div ref={waveformContainerRef} style={{ width: '100%', minHeight: 60 }}></div>
                     <div className="d-flex justify-content-center align-items-center mt-3 gap-3">
                         <button

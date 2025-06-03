@@ -266,7 +266,7 @@ return (
         <h1 className="mb-4">Oculist AI - Appointments</h1>
 
         <div className="d-flex row mb-4 g-2 justify-content-between align-items-center">
-            <div className="d-flex gap-2" style={{ maxWidth: '600px' }}>
+            <div className="d-flex gap-2" style={{ maxWidth: '100vh' }}>
                 <button className="btn btn-primary w-75" onClick={() => setShowAppModal(true)}>
                     Add Appointment
                 </button>
@@ -287,54 +287,54 @@ return (
             </div>
         </div>
 
-        <div className="w-100">
+        <div className="w-100" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             <table className="table table-bordered table-striped w-100">
-            <thead>
+            <thead style={{ position: 'sticky', top: '-0.04vh'}}>
                 <tr>
-                <th style={{ width: '170px' }}>
+                <th style={{ width: '30vh', backgroundColor: '#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400' }}>
                     Appointment #
                     <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('id')}>
-                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                        <span className="material-icons" style={{ verticalAlign: 'middle', color:'white' }}>unfold_more</span>
                     </button>
                 </th>
-                <th>
+                <th style={{ backgroundColor: '#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400' }}>
                     Date
                     <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('appointment_time')}>
-                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                        <span className="material-icons" style={{ verticalAlign: 'middle', color:'white'}}>unfold_more</span>
                     </button>
                 </th>
-                <th>
+                <th style={{ backgroundColor: '#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400' }}>
                     Status
                     <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('status')}>
-                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                        <span className="material-icons" style={{ verticalAlign: 'middle', color: 'white' }}>unfold_more</span>
                     </button>
                 </th>
-                <th>
+                <th style={{ width:'30vh',backgroundColor: '#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400' }}>
                     Type
                     <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('type')}>
-                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                        <span className="material-icons" style={{ verticalAlign: 'middle', color:'white' }}>unfold_more</span>
                     </button>
                 </th>
-                <th>
+                <th style={{ backgroundColor: '#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400' }}>
                     Doctor
                     <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('doctor_name')}>
-                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                        <span className="material-icons" style={{ verticalAlign: 'middle', color:'white'}}>unfold_more</span>
                     </button>
                 </th>
-                <th>
+                <th style={{ backgroundColor: '#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400' }}>
                     Patient
                     <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('patient_name')}>
-                        <span className="material-icons" style={{ verticalAlign: 'middle' }}>unfold_more</span>
+                        <span className="material-icons" style={{ verticalAlign: 'middle', color:'white'}}>unfold_more</span>
                     </button>
                 </th>
-                <th style={{ width: '200px' }}>Action</th>
+                <th style={{ width: '28vh', backgroundColor:'#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400'}}>Action</th>
                 </tr>
             </thead>
             <tbody>
                 {sortedAppointments.length === 0 ? (
                     <tr>
                         <td colSpan="7" className="p-0 border-0">
-                            <div className="d-flex align-items-center justify-content-center text-muted w-100 h-100" style={{ minHeight: 450 }}>
+                            <div className="d-flex align-items-center justify-content-center text-muted w-100 h-100" style={{ minHeight: '60vh' }}>
                                 No appointments available
                             </div>
                         </td>
@@ -433,20 +433,25 @@ return (
                             className={"form-control rounded-end-0"}
                             calendarClassName="border border-2 rounded shadow"
                             popperClassName="shadow"
-                            selected={form.appointment_time ? new Date(form.appointment_time) : null}
-                            onChange={date => setForm({ ...form, appointment_time: date ? date.toISOString().slice(0, 16) : "" })}
+                            selected={form.appointment_time ? (() => {
+                                // Parse local string as local time
+                                const [d, t] = form.appointment_time.split('T');
+                                if (!d || !t) return null;
+                                const [year, month, day] = d.split('-').map(Number);
+                                const [hour, minute] = t.split(':').map(Number);
+                                return new Date(year, month - 1, day, hour, minute);
+                            })() : null}
+                            onChange={date => setForm({ ...form, appointment_time: date ? toLocalISOString(date) : "" })}
                             showTimeSelect
                             timeIntervals={15}
                             dateFormat="yyyy-MM-dd HH:mm"
                             placeholderText="Select date and time"
                             isClearable
-                            style={{backgroundColor: 'blue'}}
                         />
                         <button type="button" className="btn btn-outline-primary w-25 rounded-start-0" onClick={() => {
                             const ms = 1000 * 60 * 15;
-                            var tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                            const now = new Date(Math.round((new Date().getTime()-tzoffset) / ms) * ms);
-                            setForm({ ...form, appointment_time: now.toISOString().slice(0, 16) });
+                            const now = new Date(Math.round((new Date().getTime()) / ms) * ms);
+                            setForm({ ...form, appointment_time: toLocalISOString(now) });
                         }}>Today</button>
                     </div>
                 </div>
@@ -754,7 +759,7 @@ return (
     <div className="modal d-block" tabIndex="-1" role="dialog">
         <div className="modal-dialog modal-dialog-centered" role="document">
         <div className="modal-content p-4">
-            <h2 className="mb-3">Edit Appointment</h2>
+            <h2 className="mb-4">Edit Appointment</h2>
             <form onSubmit={async (e) => {
                 e.preventDefault();
                 if (!editAppData.doctor_id || !editAppData.patient_id || !editAppData.appointment_time || !editAppData.type) {
@@ -768,6 +773,7 @@ return (
                 formData.append("appointment_time", editAppData.appointment_time);
                 formData.append("type", editAppData.type);
                 formData.append("notes", editAppData.notes || "");
+                formData.append("status", editAppData.status);
                 const res = await fetch("http://localhost:8000/update-appointment", {
                     method: "POST",
                     body: formData
@@ -781,9 +787,9 @@ return (
                     alert("Failed to update appointment");
                 }
             }}>
-            <div className="mb-3">
+            <div className="mb-2">
                 <label className="form-label">Doctor</label>
-                <select className="form-select" required value={editAppData.doctor_id}
+                <select className="form-select form-select-sm" required value={editAppData.doctor_id}
                     onChange={e => setEditAppData({ ...editAppData, doctor_id: e.target.value })}>
                     <option value="">-- Select Doctor --</option>
                     {doctors.map((doc) => (
@@ -791,9 +797,9 @@ return (
                     ))}
                 </select>
             </div>
-            <div className="mb-3">
+            <div className="mb-2">
                 <label className="form-label">Patient</label>
-                <select className="form-select" required value={editAppData.patient_id}
+                <select className="form-select form-select-sm" required value={editAppData.patient_id}
                     onChange={e => setEditAppData({ ...editAppData, patient_id: e.target.value })}>
                     <option value="">-- Select Patient --</option>
                     {patients.map((pat) => (
@@ -801,48 +807,59 @@ return (
                     ))}
                 </select>
             </div>
-            <div className="mb-3">
+            <div className="mb-2">
                 <label className="form-label">Visit Type</label>
-                <select className="form-select" value={editAppData.type}
+                <select className="form-select form-select-sm" value={editAppData.type}
                     onChange={e => setEditAppData({ ...editAppData, type: e.target.value })}>
                     {appointmentTypeOptions.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                 </select>
             </div>
-            <div className="mb-3">
+            <div className="mb-2">
                 <label className="form-label">Date & Time</label>
-                <div className="input-group">
+                <div className="input-group input-group-sm">
                     <DatePicker
                         wrapperClassName="w-75"
-                        className={"form-control rounded-end-0"}
+                        className={"form-control rounded-end-0 form-control-sm"}
                         calendarClassName="border border-2 rounded shadow"
                         popperClassName="shadow"
-                        selected={editAppData.appointment_time ? new Date(editAppData.appointment_time) : null}
-                        onChange={date => setEditAppData({ ...editAppData, appointment_time: date ? date.toISOString().slice(0, 16) : "" })}
+                        selected={editAppData.appointment_time ? (() => {
+                            const [d, t] = editAppData.appointment_time.split('T');
+                            if (!d || !t) return null;
+                            const [year, month, day] = d.split('-').map(Number);
+                            const [hour, minute] = t.split(':').map(Number);
+                            return new Date(year, month - 1, day, hour, minute);
+                        })() : null}
+                        onChange={date => setEditAppData({ ...editAppData, appointment_time: date ? toLocalISOString(date) : "" })}
                         showTimeSelect
                         timeIntervals={15}
                         dateFormat="yyyy-MM-dd HH:mm"
                         placeholderText="Select date and time"
                         isClearable
                     />
-                    <button type="button" className="btn btn-outline-primary w-25 rounded-start-0" onClick={() => {
+                    <button type="button" className="btn btn-outline-primary w-25 rounded-start-0 btn-sm" style={{minWidth: 0}} onClick={() => {
                         const ms = 1000 * 60 * 15;
-                        var tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                        const now = new Date(Math.round((new Date().getTime()-tzoffset) / ms) * ms);
-                        setEditAppData({ ...editAppData, appointment_time: now.toISOString().slice(0, 16) });
+                        const now = new Date(Math.round((new Date().getTime()) / ms) * ms);
+                        setEditAppData({ ...editAppData, appointment_time: toLocalISOString(now) });
                     }}>Today</button>
                 </div>
             </div>
-            <div className="mb-3">
-                <label className="form-label">Notes</label>
-                <textarea className="form-control"
-                    value={editAppData.notes || ""}
-                    onChange={e => setEditAppData({ ...editAppData, notes: e.target.value })} />
+            <div className="mb-2">
+                <label className="form-label">Status</label>
+                <select className="form-select form-select-sm" value={editAppData.status} onChange={e => setEditAppData({ ...editAppData, status: e.target.value })}>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="completed">Completed</option>
+                    <option value="canceled">Canceled</option>
+                </select>
             </div>
-            <div className="d-flex justify-content-end gap-2 mt-3">
-                <button className="btn btn-success" type="submit">Save</button>
-                <button className="btn btn-secondary" type="button" onClick={() => { setShowEditAppModal(false); setEditAppData(null); }}>Cancel</button>
+            <div className="mb-2">
+                <label className="form-label">Notes</label>
+                <textarea className="form-control form-control-sm" style={{minHeight: 40, maxHeight: 60}} value={editAppData.notes || ""} onChange={e => setEditAppData({ ...editAppData, notes: e.target.value })} />
+            </div>
+            <div className="d-flex justify-content-end gap-2 mt-2">
+                <button className="btn btn-success btn-sm" type="submit">Save</button>
+                <button className="btn btn-secondary btn-sm" type="button" onClick={() => { setShowEditAppModal(false); setEditAppData(null); }}>Cancel</button>
             </div>
             </form>
         </div>
@@ -1097,6 +1114,11 @@ return (
     </div>
 );
 }
+function toLocalISOString(date) {
+    if (!date) return '';
+    const pad = n => n < 10 ? '0' + n : n;
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+}
 
 function CalendarModal({ appointments, doctor, onClose, navigate }) {
     const today = new Date();
@@ -1180,18 +1202,8 @@ function CalendarModal({ appointments, doctor, onClose, navigate }) {
         }[type] || type;
     }
 
-    function statusLabel(status) {
-        return {
-            scheduled: 'Scheduled',
-            completed: 'Completed',
-            canceled: 'Canceled',
-        }[status] || status;
-    }
-
     const monthLabel = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
     const isSameDay = (d1, d2) => d1 && d2 && d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
-
-    const selectedDayAppointments = getDayAppointments(selectedDate).sort((a, b) => new Date(a.appointment_time) - new Date(b.appointment_time));
 
     return (
         <div className="modal d-block" tabIndex="-1" role="dialog">
