@@ -266,7 +266,7 @@ return (
         <h1 className="mb-4">Oculist AI - Appointments</h1>
 
         <div className="d-flex row mb-4 g-2 justify-content-between align-items-center">
-            <div className="d-flex gap-2" style={{ maxWidth: '100vh' }}>
+            <div className="d-flex gap-2" style={{ maxWidth: '45vw' }}>
                 <button className="btn btn-primary w-75" onClick={() => setShowAppModal(true)}>
                     Add Appointment
                 </button>
@@ -291,7 +291,7 @@ return (
             <table className="table table-bordered table-striped w-100">
             <thead style={{ position: 'sticky', top: '-0.04vh'}}>
                 <tr>
-                <th style={{ width: '30vh', backgroundColor: '#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400' }}>
+                <th style={{ width: '13vw', backgroundColor: '#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400' }}>
                     Appointment #
                     <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('id')}>
                         <span className="material-icons" style={{ verticalAlign: 'middle', color:'white' }}>unfold_more</span>
@@ -309,7 +309,7 @@ return (
                         <span className="material-icons" style={{ verticalAlign: 'middle', color: 'white' }}>unfold_more</span>
                     </button>
                 </th>
-                <th style={{ width:'30vh',backgroundColor: '#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400' }}>
+                <th style={{ width:'13vw',backgroundColor: '#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400' }}>
                     Type
                     <button className="btn btn-link btn-sm p-0 ms-1" onClick={() => handleSort('type')}>
                         <span className="material-icons" style={{ verticalAlign: 'middle', color:'white' }}>unfold_more</span>
@@ -327,7 +327,7 @@ return (
                         <span className="material-icons" style={{ verticalAlign: 'middle', color:'white'}}>unfold_more</span>
                     </button>
                 </th>
-                <th style={{ width: '28vh', backgroundColor:'#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400'}}>Action</th>
+                <th style={{ width: '13.8vw', backgroundColor:'#0d6efd', color:'white', fontSize:'1 rem', fontWeight:'400'}}>Action</th>
                 </tr>
             </thead>
             <tbody>
