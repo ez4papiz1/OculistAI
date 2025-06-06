@@ -79,6 +79,7 @@ const [editPatientForm, setEditPatientForm] = useState({ patient_id: '', firstna
 const [editDoctorError, setEditDoctorError] = useState('');
 const [editPatientError, setEditPatientError] = useState('');
 
+//Fetch appointments, doctors, and patients
 useEffect(() => {
     const fetchAppointments = async () => {
         const res = await fetch("http://localhost:8000/appointment");
@@ -101,6 +102,7 @@ useEffect(() => {
     fetchPatients();
 }, []);
 
+//Auth check
 useEffect(() => {
     if (!doctor) {
         alert("Please login");
@@ -110,6 +112,7 @@ useEffect(() => {
     }
 }, [doctor, navigate]);
 
+//Sort appointments
 const sortedAppointments = React.useMemo(() => {
     let sortable = [...appointments];
     if (sortConfig.key) {
@@ -143,6 +146,7 @@ const sortedAppointments = React.useMemo(() => {
     return sortable;
 }, [appointments, sortConfig]);
 
+//Handle sort event
 const handleSort = (key) => {
     setSortConfig((prev) => {
         if (prev.key === key) {
@@ -152,6 +156,7 @@ const handleSort = (key) => {
     });
 };
 
+//Handle appointment submission
 const handleAppSubmit = async (e) => {
 e.preventDefault();
 
@@ -189,6 +194,7 @@ if (res.ok) {
 }
 };
 
+// Handle patient submission
 const handlePatientSubmit = async (e) => {
     e.preventDefault();
     setPatientError("");
@@ -225,6 +231,7 @@ const handlePatientSubmit = async (e) => {
     }
 };
 
+//Modals for name and email change
 const openChangeNameModal = () => {
     if (doctor) setNameFields({ firstname: doctor.firstname, lastname: doctor.lastname });
     setShowChangeNameModal(true);
@@ -236,6 +243,7 @@ const openChangeEmailModal = () => {
     setShowSettingsModal(false);
 };
 
+//Handle closing modals on esc key
 useEffect(() => {
     function handleEsc(e) {
         if (e.key === 'Escape') {
@@ -259,6 +267,7 @@ useEffect(() => {
     return () => window.removeEventListener('keydown', handleEsc);
 }, [showAppModal, showPatientModal, showDoctorModal, showSettingsModal, showChangeNameModal, showChangeEmailModal, showChangePasswordModal, showCalendarModal, showEditAppModal, showDoctorsModal, showPatientsModal, showEditDoctorModal, showEditPatientModal, removeModal]);
 
+//Prevent loading the page if not authenticated
 if (!checkedAuth) return null;
 
 return (

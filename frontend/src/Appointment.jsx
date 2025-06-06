@@ -51,6 +51,7 @@ export default function Appointment() {
     const [showSpeedSlider, setShowSpeedSlider] = useState(false);
     const [date, setDate] = useState("");
 
+    //Auth check
     useEffect(() => {
         if (!doctor) {
             alert("Please login");
@@ -60,6 +61,7 @@ export default function Appointment() {
         }
     }, [doctor, navigate]);
 
+    // Fetch appointment details and transcription
     useEffect(() => {
         const fetchAppointment = async () => {
             const res = await fetch("http://localhost:8000/appointment");
@@ -92,6 +94,7 @@ export default function Appointment() {
         fetchTranscription();
     }, [id]);
 
+    // Update notes
     useEffect(() => {
         const delay = setTimeout(() => {
             if (notes !== "") {
@@ -109,12 +112,14 @@ export default function Appointment() {
         return () => clearTimeout(delay);
     }, [notes]);
 
+    // Update playback speed
     useEffect(() => {
         if (waveSurferRef.current) {
             waveSurferRef.current.setPlaybackRate(playbackSpeed);
         }
     }, [playbackSpeed]);
 
+    // Initialize WaveSurfer
     useEffect(() => {
         if (audioURL && waveformContainerRef.current) {
             if (waveSurferRef.current) {
@@ -153,6 +158,7 @@ export default function Appointment() {
         };
     }, [audioURL]);
 
+    // Start recording audio
     const startRecording = async () => {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         streamRef.current = stream;
@@ -197,6 +203,7 @@ export default function Appointment() {
         setRecording(true);
     };
 
+    // Stop recording audio
     const stopRecording = () => {
         setLoadingSummary(true);
         setLoadingTranscript(true);
@@ -206,6 +213,7 @@ export default function Appointment() {
         streamRef.current = null;
     };
 
+    // Handle media recorder stop event
     useEffect(() => {
         if (!mediaRecorder.current) return;
         const origOnStop = mediaRecorder.current.onstop;

@@ -8,6 +8,7 @@ import enum
 
 Base = declarative_base()
 
+#Appointment statuses and types
 class AppointmentStatusEnum(str, enum.Enum):
     scheduled = "scheduled"
     completed = "completed"
@@ -22,6 +23,7 @@ class AppointmentTypeEnum(str, enum.Enum):
     surgery = "surgery"
     emergency = "emergency"
 
+#Doctor, patient, appointment and transcription models
 class Doctor(Base):
     __tablename__ = "doctors"
 

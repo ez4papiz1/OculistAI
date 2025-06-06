@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Depends, Form, HTTPException
 from sqlalchemy.orm import Session
-from app import database, crud, schemas, utils, models
+from app import database, schemas, utils, models
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -19,8 +19,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Audio upload directory
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
+# Upload audio and generate transcription/summary
 @app.post("/upload")
 async def upload_audio(
     appointment_id: int = Form(...),
@@ -41,18 +43,23 @@ async def upload_audio(
     with open(path, "wb") as f:
         f.write(file_bytes)
 
-    transcript = utils.transcribe(path)  # now a list of dicts
-    # For summary, join all text for the LLM
+    transcript = utils.transcribe(path)
     summary = utils.summarize(" ".join([s['text'] for s in transcript]), appointment_type, bullets)
 
-    # Store transcript as JSON string in DB for compatibility
     transcript_json = json.dumps(transcript)
-    transcription = crud.save_transcription(
-        db, appointment_id, path, transcript_json, summary
+    t = models.Transcription(
+        appointment_id=appointment_id,
+        audio_path=path,
+        transcript=transcript_json,
+        summary=summary
     )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
 
     return {"summary": summary, "transcript": transcript}
 
+# Update appointment status route
 @app.post("/update-status")
 def update_status(
     appointment_id: int = Form(...),
@@ -66,6 +73,7 @@ def update_status(
         return {"success": True}
     return {"success": False, "error": "Appointment not found"}
 
+# Get all appointment info
 @app.get("/appointment")
 def get_appointments(db: Session = Depends(database.get_db)):
     appointments = db.query(models.Appointment).all()
@@ -88,6 +96,7 @@ def get_appointments(db: Session = Depends(database.get_db)):
         })
     return results
 
+# Get appointment by id
 @app.get("/transcription/{appointment_id}")
 def get_transcription_by_appointment(appointment_id: int, db: Session = Depends(database.get_db)):
     transcription = db.query(models.Transcription).filter(models.Transcription.appointment_id == appointment_id).first()
@@ -98,7 +107,7 @@ def get_transcription_by_appointment(appointment_id: int, db: Session = Depends(
     try:
         transcript = json.loads(transcription.transcript)
     except Exception:
-        transcript = transcription.transcript  # fallback for legacy data
+        transcript = transcription.transcript
 
     return {
         "transcript": transcript,
@@ -106,6 +115,7 @@ def get_transcription_by_appointment(appointment_id: int, db: Session = Depends(
         "audio_path": transcription.audio_path
     }
 
+# Get doctors and patients
 @app.get("/doctors")
 def get_doctors(db: Session = Depends(database.get_db)):
     return db.query(models.Doctor).all()
@@ -114,7 +124,7 @@ def get_doctors(db: Session = Depends(database.get_db)):
 def get_patients(db: Session = Depends(database.get_db)):
     return db.query(models.Patient).all()
 
-
+# Create appointment route
 @app.post("/appointment")
 def create_appointment(
     doctor_id: int = Form(...),
@@ -141,6 +151,7 @@ def create_appointment(
     db.refresh(new_appointment)
     return {"status": "success", "appointment_id": new_appointment.id}
 
+# Create patient route
 @app.post("/patients")
 def create_patient(
     firstname: str = Form(...),
@@ -160,6 +171,7 @@ def create_patient(
     db.refresh(new_patient)
     return {"id": new_patient.id, "message": "Patient created successfully"}
 
+# Update notes route
 @app.post("/update-notes")
 def update_notes(
     appointment_id: int = Form(...),
@@ -171,6 +183,7 @@ def update_notes(
     db.commit()
     return {"message": "Notes updated"}
 
+# Update type route
 @app.post("/update-type")
 async def update_type(
     appointment_id: int = Form(...),
@@ -182,6 +195,7 @@ async def update_type(
     db.commit()
     return {"message": "Appointment type updated"}
 
+# Add doctor route
 @app.post("/doctors")
 def create_doctor(
     firstname: str = Form(...),
@@ -190,7 +204,6 @@ def create_doctor(
     password: str = Form(...),
     db: Session = Depends(database.get_db)
 ):
-    # Check if email already exists
     if email:
         existing = db.query(models.Doctor).filter(models.Doctor.email == email).first()
         if existing:
@@ -206,6 +219,7 @@ def create_doctor(
     db.refresh(new_doctor)
     return {"id": new_doctor.id, "message": "Doctor created successfully"}
 
+# Update doctor name route
 @app.post("/update-doctor-name")
 def update_doctor_name(
     doctor_id: int = Form(...),
@@ -221,6 +235,7 @@ def update_doctor_name(
     db.commit()
     return {"message": "Name updated"}
 
+# Update doctor email route
 @app.post("/update-doctor-email")
 def update_doctor_email(
     doctor_id: int = Form(...),
@@ -234,6 +249,7 @@ def update_doctor_email(
     db.commit()
     return {"message": "Email updated"}
 
+# Update doctor password route
 @app.post("/update-doctor-password")
 def update_doctor_password(
     doctor_id: int = Form(...),
@@ -250,6 +266,7 @@ def update_doctor_password(
     db.commit()
     return {"message": "Password updated"}
 
+# Login route
 @app.post("/login")
 def login(
     email: str = Form(...),
@@ -261,6 +278,7 @@ def login(
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return {"id": doctor.id, "email": doctor.email, "firstname": doctor.firstname, "lastname": doctor.lastname}
 
+# Update appointment route
 @app.post("/update-appointment")
 def update_appointment(
     appointment_id: int = Form(...),
@@ -288,6 +306,7 @@ def update_appointment(
     db.refresh(appointment)
     return {"status": "success", "appointment_id": appointment.id}
 
+# Delete appointment route
 @app.post("/delete-appointment")
 def delete_appointment(
     appointment_id: int = Form(...),
@@ -305,6 +324,7 @@ def delete_appointment(
     db.commit()
     return {"status": "success"}
 
+# Edit doctor route
 @app.post("/edit-doctor")
 def edit_doctor(
     doctor_id: int = Form(...),
@@ -325,6 +345,7 @@ def edit_doctor(
     db.refresh(doctor)
     return {"message": "Doctor updated successfully"}
 
+# Edit patient route
 @app.post("/edit-patient")
 def edit_patient(
     patient_id: int = Form(...),

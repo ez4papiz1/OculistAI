@@ -8,6 +8,7 @@ from pydub import AudioSegment
 
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Generate a transcription from audio using Whisper
 def transcribe(audio_path: str):
     with open(audio_path, "rb") as f:
         response = client.audio.transcriptions.create(
@@ -34,6 +35,7 @@ def transcribe(audio_path: str):
 
     return sentences_with_times
 
+# Summarize the transciption based on the appointment type and bullet points
 def summarize(text: str, appointment_type: str, bullets: str) -> str:
     bullet_list = json.loads(bullets)
     bullet_str = ", ".join(bullet_list)
@@ -86,6 +88,7 @@ def summarize(text: str, appointment_type: str, bullets: str) -> str:
     )
     return response.choices[0].message.content.strip()
 
+# Hashing and verifying passwords using bcrypt
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
