@@ -4,6 +4,8 @@ import os
 
 DB_URL = os.getenv("DATABASE_URL")
 if DB_URL:
+    if DB_URL.startswith("mysql://"):
+        DB_URL = DB_URL.replace("mysql://", "mysql+pymysql://", 1)
     SQLALCHEMY_DATABASE_URL = DB_URL
 else:
     DB_USER = os.getenv("DATABASE_USER")
