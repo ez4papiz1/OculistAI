@@ -19,8 +19,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Audio upload directory
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Audio upload directory (use absolute path for Railway volume)
+UPLOADS_DIR = "/uploads"
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # Upload audio and generate transcription/summary
 @app.post("/upload")
@@ -38,7 +39,8 @@ async def upload_audio(
         db.delete(t)
     db.commit()
     
-    path = f"uploads/{appointment_id}.webm"
+    # Save to Railway volume
+    path = f"{UPLOADS_DIR}/{appointment_id}.webm"
     file_bytes = await file.read()
     with open(path, "wb") as f:
         f.write(file_bytes)
